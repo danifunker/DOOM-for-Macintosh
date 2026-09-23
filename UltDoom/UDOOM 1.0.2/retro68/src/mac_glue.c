@@ -43,3 +43,28 @@ OSErr HGetVol(StringPtr volName, short *vRefNum, long *dirID)
     *dirID = pb.ioWDDirID;
     return pb.ioResult;
 }
+
+/* ParamText with line feeds ("\n" under GCC) turned into returns, as MPW had them. */
+#undef ParamText
+pascal void Retro68ParamText(ConstStr255Param p0, ConstStr255Param p1,
+                             ConstStr255Param p2, ConstStr255Param p3)
+{
+    static Str255      copy[4];
+    ConstStr255Param   in[4];
+    int                i, j;
+
+    in[0] = p0; in[1] = p1; in[2] = p2; in[3] = p3;
+    for (i = 0; i < 4; i++)
+    {
+        if (!in[i])
+        {
+            copy[i][0] = 0;
+            continue;
+        }
+        memcpy(copy[i], in[i], in[i][0] + 1);
+        for (j = 1; j <= copy[i][0]; j++)
+            if (copy[i][j] == '\n')
+                copy[i][j] = '\r';
+    }
+    ParamText(copy[0], copy[1], copy[2], copy[3]);
+}

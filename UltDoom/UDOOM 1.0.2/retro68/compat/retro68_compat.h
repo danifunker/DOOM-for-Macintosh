@@ -135,6 +135,13 @@ pascal void InsXTime(QElemPtr tmTaskPtr) M68K_INLINE(0xA458);
 /* ---- File Manager glue (lives in mac_glue.c) ---- */
 OSErr HGetVol(StringPtr volName, short *vRefNum, long *dirID);
 
+/* ---- MPW and CodeWarrior compiled "\n" as a carriage return (0x0D), the
+   Mac line break; GCC makes it a line feed (0x0A), which alerts draw as a box.
+   Route ParamText through a copy that turns line feeds into returns. ---- */
+pascal void Retro68ParamText(ConstStr255Param p0, ConstStr255Param p1,
+                             ConstStr255Param p2, ConstStr255Param p3);
+#define ParamText Retro68ParamText
+
 /* ---- C <-> Pascal string conversion in place (mac_glue.c) ---- */
 char          *p2cstr(unsigned char *s);
 unsigned char *c2pstr(char *s);
