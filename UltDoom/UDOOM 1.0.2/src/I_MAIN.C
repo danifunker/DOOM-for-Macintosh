@@ -2412,7 +2412,6 @@ static void TCPSetupDialog (DialogPtr dlg)
 	if (CountMItems(m) < iConnectTCP)
 		AppendMenu(m, "\pTCP/IP");
 	// Transports not built into this port yet.
-	DisableItem(m, iConnectAppleTalk);
 	DisableItem(m, iConnectCTB);
 	DisableItem(m, iConnectIPX);
 

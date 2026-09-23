@@ -31,6 +31,32 @@
 #define SIXWORDINLINE(a,b,c,d,e,f)       M68K_INLINE(a,b,c,d,e,f)
 #endif
 
+/* ---- Mixed Mode: routine descriptors only matter to CFM code; on classic
+   68K these ProcInfo values are computed but never used. ---- */
+#ifndef RESULT_SIZE
+#define SIZE_CODE(size)                                  0
+#define RESULT_SIZE(sizeCode)                            0
+#define STACK_ROUTINE_PARAMETER(whichParam, sizeCode)    0
+#define REGISTER_RESULT_LOCATION(whichReg)               0
+#define REGISTER_ROUTINE_PARAMETER(whichParam, whichReg, sizeCode) 0
+#define SPECIAL_CASE_PROCINFO(specialCaseCode)           0
+#endif
+#ifndef USESROUTINEDESCRIPTORS
+#define USESROUTINEDESCRIPTORS 0
+#endif
+typedef ProcPtr Register68kProcPtr;
+enum { kSpecialCaseProtocolHandler = 7, kSpecialCaseSocketListener = 8 };
+typedef const unsigned char *ConstStr32Param;
+
+/* ---- Virtual Memory (_MemoryDispatch) ---- */
+#pragma parameter __D0 HoldMemory(__A0, __A1)
+pascal OSErr HoldMemory(void *address, unsigned long count) M68K_INLINE(0x7000, 0xA05C);
+
+/* ---- AppleTalk error codes (Universal Headers Errors.h) ---- */
+enum { noBridgeErr = -93, excessCollsns = -95, portInUse = -97, portNotCf = -98,
+       extractErr = -3104, dsChkErr = 5, ddpSktErr = -91,
+       nbpDuplicate = -1027, nbpNotFound = -1028 };
+
 /* ---- QuickDraw / GDevice constants (Universal Interfaces Quickdraw.h) ---- */
 enum { clutType = 0, fixedType = 1, directType = 2 };
 enum { gdDevType = 0, burstDevice = 7, ext32Device = 8, ramInit = 10,

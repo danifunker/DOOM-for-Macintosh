@@ -656,7 +656,7 @@ OSErr GetMyZoneName()
 	}
 	else if (status == noBridgeErr)
 	{
-		Str32	temp = "\p*";
+		Str32	temp = "\001*";
 		
 		BlockMoveData(temp, &gZoneNames[0], 3);
 		status = noErr;
@@ -681,8 +681,8 @@ OSErr GetMyZoneName()
 OSErr InitializeNet()
 {
 	OSErr			status	= noErr;
-	Str32			newName = "\pDoomNewPlay0";
-	Str32			saveName = "\pDoomSavPlay0";
+	Str32			newName = "\014DoomNewPlay0";
+	Str32			saveName = "\014DoomSavPlay0";
 	unsigned char	*strPtr;
 	int				count;
 	short			otherRecruit	= 0;
@@ -770,7 +770,7 @@ OSErr InitializeNet()
 			// Open Transport bug
 			if(status == noBridgeErr)
 			{
-				Str32	temp = "\p*";
+				Str32	temp = "\001*";
 				
 				BlockMoveData(temp, &gZoneNames[0], 3);
 				status = noErr;
@@ -1250,7 +1250,7 @@ TRYAGAIN:
 				// Will we play with the available players
 				if (numPlayers >= 1)
 				{
-					Str255	str = "\pThere are currently 1 players available.  Would you like to wait for more players?";
+					Str255	str = "\122There are currently 1 players available.  Would you like to wait for more players?";
 					
 					str[21] = (unsigned char) numPlayers + '0';
 					if (numPlayers > 1)
@@ -1264,7 +1264,7 @@ TRYAGAIN:
 					
 					if (waitAgain == kNoButton)
 					{
-						Str255	str = "\pPreparing for 1 player game...";
+						Str255	str = "\036Preparing for 1 player game...";
 						
 						str[15] = (unsigned char) numPlayers + '0' + 1;
 						StatusParamText(str, "\p", "\p", "\p");

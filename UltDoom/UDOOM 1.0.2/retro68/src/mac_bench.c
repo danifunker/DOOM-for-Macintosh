@@ -24,6 +24,7 @@
  *     -host N             host an N-player game (2-4)
  *     -join a.b.c.d[:port]  join the game hosted at that address
  *     -serial modem|printer 2-player game over a null-modem cable
+ *     -appletalk N        N-player game over LocalTalk / EtherTalk
  *     -deathmatch / -altdeath / -nomonsters / -respawn
  *     -skill N            1-5
  *     -warp E M           episode and map (DOOM II: -warp 1 M)
@@ -63,6 +64,7 @@ static Boolean  sAutoBench, sAutoQuit;
 static int      sNetHost;               /* -host N */
 static Boolean  sNetJoin;               /* -join addr */
 static int      sNetSerial;             /* -serial: 1 modem port, 2 printer port */
+static int      sNetAppleTalk;          /* -appletalk N */
 
 static void StartDemo(int n)
 {
@@ -261,6 +263,8 @@ void MacBench_ReadArgs(void)
             sNetJoin = true;
         else if (!strcmp(word, "-serial") && fscanf(f, "%31s", word) == 1)
             sNetSerial = strcmp(word, "printer") ? 1 : 2;
+        else if (!strcmp(word, "-appletalk") && fscanf(f, "%d", &sNetAppleTalk) == 1)
+            ;
         else if (!strcmp(word, "-deathmatch"))
             deathmatch = 1;
         else if (!strcmp(word, "-altdeath"))
@@ -299,10 +303,16 @@ Boolean MacBench_ApplyNetArgs(void)
 
     extern int     gSerialPort;
 
-    if (!sNetHost && !sNetJoin && !sNetSerial)
+    if (!sNetHost && !sNetJoin && !sNetSerial && !sNetAppleTalk)
         return false;
     gPlayAlone = false;
     gPlayNetGame = true;
+    if (sNetAppleTalk)
+    {   /* players find each other through NBP */
+        gNetType = kAppleTalkNet;
+        gPlayersWanted = sNetAppleTalk;
+        return true;
+    }
     if (sNetSerial)
     {   /* who is player 1 is settled by the serial handshake */
         gNetType = kSerialNet;

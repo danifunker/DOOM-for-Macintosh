@@ -2,29 +2,20 @@
  * Network transport stubs.
  *
  * The original game offered AppleTalk, serial, Comm Toolbox and IPX
- * multiplayer.  This port builds serial (SerialNet.c) and TCP/IP
- * (tcpnet.c); the rest depend on Comm Toolbox / MacIPX / AppleTalk
- * interfaces that aren't wired up yet, so their entry points are stubbed
- * and the multiplayer dialog disables them.
+ * multiplayer.  This port builds AppleTalk (AppleTalkNet.c), serial
+ * (SerialNet.c) and TCP/IP (tcpnet.c); Comm Toolbox and MacIPX aren't wired
+ * up, so their entry points are stubbed and the multiplayer dialog disables
+ * them.
  */
 #include "LionDoom.h"
 #include "doomdef.h"
 
-short      gNumPlayersOnNet = 0;
 ConnHandle gConn = NULL;
 short      gIPXSocket = 0;
 
 OSErr CMIdle(ConnHandle hConn) { return noErr; }
 OSErr CMClose(ConnHandle hConn, Boolean async, void *completor, long timeout,
               Boolean now) { return noErr; }
-
-/* AppleTalk */
-OSErr   CheckAppleTalkState(void)                         { return -1; }
-OSErr   InitializeNet(void)                               { return -1; }
-void    AppleTalkConnect(void)                            { }
-OSErr   TerminateNet(void)                                { return noErr; }
-OSErr   SendDDPPacket(UInt16 to, Ptr data, Size length)   { return noErr; }
-Boolean ReceiveDDPPacket(Ptr data, Size *length, short *remoteNode) { return false; }
 
 /* Comm Toolbox */
 void    CTBInitializeNet(void)                            { }

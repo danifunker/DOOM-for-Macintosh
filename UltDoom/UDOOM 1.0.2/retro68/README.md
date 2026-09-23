@@ -87,6 +87,45 @@ benchmark timing: the guest clock then advances at about 31 M instructions per s
 roughly a 33 MHz 68040. QEMU doesn't model the 68040's caches, per-instruction cycle
 costs or VRAM speed, so use it for before/after comparisons, not absolute numbers.
 
+## Multiplayer
+
+Choose **New Game → Multiplayer**. Under **Connect via**:
+
+| Transport | Players | Notes |
+| --- | --- | --- |
+| **TCP/IP** | 2–4 | UDP over MacTCP, or Open Transport's MacTCP compatibility. Tick **Host this game** on one Mac; it shows its IP address. The others type that address (`a.b.c.d` or `a.b.c.d:port`). |
+| **Serial (Modem) / Serial (Printer)** | 2 | Null-modem cable between the two ports. Lion's original code. |
+| **AppleTalk** | 2–4 | LocalTalk or EtherTalk; players find each other automatically (NBP). Lion's original code. |
+
+TCP/IP details:
+
+- The host listens on **UDP port 5029**. For internet play, forward that port on the
+  host's router to the host Mac; joiners need no router changes.
+- Behind a router, the host Mac only knows its LAN address. For internet games, give
+  joiners the router's public address instead.
+- Joiners send everything through the host, which relays it, so 3–4 players work
+  even when every joiner is behind a different NAT.
+
+The same games can be started from **DOOM Args** without the dialogs:
+
+```
+-host 2                     host a 2-player TCP/IP game
+-join 192.168.1.20          join it (optionally :port)
+-serial modem               serial game on the modem port (or: printer)
+-appletalk 3                3-player AppleTalk game
+-deathmatch | -altdeath   -skill 1-5   -warp E M   -nomonsters   -respawn
+```
+
+Tested in QEMU:
+
+- **TCP/IP:** two Quadra 800s, Mac OS 7.5.5 / MacTCP 2.0.6, with the joiner reaching
+  the host through QEMU's NAT and a UDP port forward.
+- **Serial:** two Quadras with their modem ports joined through a socket.
+- **AppleTalk:** one Quadra on LocalTalk. Socket, name registration, lookup and
+  shutdown work. A two-machine game is untested, because QEMU has no LocalTalk and
+  its emulated Quadra Ethernet wouldn't switch to EtherTalk, even after Apple's
+  Network Software Installer.
+
 ## Frame rate and benchmark
 
 The **Control** menu has two new items:
@@ -120,9 +159,12 @@ application containing any of:
 - `rsrc/DoomShell.rsrc.bin`: icons, BNDL/FREF, splash screens, dialogs, menus,
   cursors and balloon help from the shipped shareware application, with its code
   removed by `tools/rsrcfilter.py`.
-- Multiplayer (AppleTalk, serial, Comm Toolbox, IPX) is stubbed out
-  (`src/net_stubs.c`). The Multiversal Interfaces have no AppleTalk or Comm Toolbox
-  support.
+- `src/tcpnet.c`, `compat/MacTCP.h`: new TCP/IP multiplayer transport (see below).
+- `src/appletalk_glue.c`, `compat/AppleTalk.h`: the AppleTalk interface glue MPW's
+  `Interface.o` supplied, ported to C from Apple's `nAppleTalk.a`, `piNBP.a` and
+  `piMAIN.a`, so Lion's `AppleTalkNet.c` builds unchanged.
+- Comm Toolbox (modem) and IPX multiplayer are stubbed out (`src/net_stubs.c`) and
+  disabled in the dialog.
 
 ## Performance notes
 
