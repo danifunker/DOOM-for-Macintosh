@@ -129,6 +129,8 @@ static const char *CPUName(void)
     }
 }
 
+void MacBench_ReadArgs(void);
+
 static void WriteLog(long totalFPS10)
 {
     FILE      *f;
@@ -148,7 +150,9 @@ static void WriteLog(long totalFPS10)
                     i, sTics[i], sRealTics[i],
                     FPS10(sTics[i], sRealTics[i]) / 10,
                     FPS10(sTics[i], sRealTics[i]) % 10);
-    fprintf(f, "  average: %ld.%ld fps\n\n", totalFPS10 / 10, totalFPS10 % 10);
+    fprintf(f, "  average: %ld.%ld fps\n", totalFPS10 / 10, totalFPS10 % 10);
+    /* lets a PC-sampling profile be mapped back to the link map */
+    fprintf(f, "  MacBench_ReadArgs at %p\n\n", (void *)MacBench_ReadArgs);
     fclose(f);
 }
 

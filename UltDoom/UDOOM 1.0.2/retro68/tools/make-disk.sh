@@ -2,6 +2,7 @@
 # Package the Retro68 build into a small SCSI hard-disk image with rb-cli.
 #
 #   tools/make-disk.sh [-o DOOM.hda] [-s 48M] [-w path/to/WAD ...] [--no-shareware]
+#   DOOM_ARGS="-bench -quit" tools/make-disk.sh      # also write a "DOOM Args" file
 #
 # The disk (volume "DOOM") holds the application, the QuickTime MIDI music
 # and a WAD.  By default the freely redistributable shareware DOOM1.WAD is
@@ -44,7 +45,8 @@ sw="$work/sw/DOOM"
 flat="$work/doom.hfs"
 rb new --fs hfs --size "$size" --name DOOM "$flat"
 
-rb put-macbinary "$flat" "$app"
+python3 "$here/tools/mbrename.py" "$app" "$work/app.bin" "Ultimate DOOM"
+rb put-macbinary "$flat" "$work/app.bin"
 rb mkdir "$flat" /Music
 for m in "$sw"/Music/*.bin; do
     rb put-macbinary --dst-dir /Music "$flat" "$m"

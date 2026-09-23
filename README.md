@@ -20,3 +20,4 @@ You can find discussions and more information at [the 68kMLA forum](https://68km
 - [x] Compilation with CodeWarrior 7
 - [x] Hashtable fix killough 98 (esselfortium)
 - [ ] Timedemo mode (zigzagjoe)
+- [x] Retro68 (GCC) build of Ultimate DOOM 1.0.2 for 68040 / 68LC040 with an FPS counter, a built-in timedemo benchmark and disk-image packaging. See [UltDoom/UDOOM 1.0.2/retro68](UltDoom/UDOOM%201.0.2/retro68/README.md)

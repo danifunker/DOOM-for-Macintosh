@@ -1,0 +1,163 @@
+# Ultimate DOOM 1.0.2 for 68040 Macs (Retro68 build)
+
+This directory builds Lion Entertainment's Ultimate DOOM 1.0.2 sources
+(`../src`, `../hdrs`) with the [Retro68](https://github.com/autc04/Retro68)
+GCC cross-toolchain.
+
+The binary targets the 68040 but uses no FPU instructions, so it runs on
+full 68040 machines (Quadra 700/800/900/950, Centris 650) and on the
+FPU-less 68LC040 (Centris 610, Quadra 605, LC/Performa 475, etc.).
+
+One application plays every IWAD: shareware `DOOM1.WAD`, registered or
+Ultimate `DOOM.WAD`, and `DOOM2.WAD`. Put the WAD next to the application,
+or drop it on the application in the Finder.
+
+## Requirements (on the Mac)
+
+- 68040 or 68LC040, System 7.1 or later (tested on 7.5.5)
+- 32-bit addressing turned on (Memory control panel)
+- 8 MB of RAM or more; the application asks for 16 MB and runs in 6 MB
+- 256 colours at 640×480 or larger
+- QuickTime 2.0 or later, for music (optional)
+
+## Building
+
+```sh
+cmake -S . -B build \
+  -DCMAKE_TOOLCHAIN_FILE=$RETRO68/toolchain/m68k-apple-macos/cmake/retro68.toolchain.cmake
+cmake --build build
+```
+
+This produces `build/UltimateDOOM.bin` (MacBinary) and `build/UltimateDOOM.dsk`
+(an 800K image containing only the application).
+
+Options (`-D...`):
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `DOOM_CPU` | `68040` | `-m` CPU; `68020`/`68030` also build, untested |
+| `DOOM_OPT` | `-O2` | optimisation flags |
+| `DOOM_SINGLE_SEGMENT` | `OFF` | link as one CODE segment (measured no faster) |
+
+## Packaging a disk image
+
+`tools/make-disk.sh` uses `rb-cli` from [rusty-backup](https://github.com/danifunker/rusty-backup) to build an
+Apple Partition Map SCSI disk image with an Apple driver. Any Quadra ROM, including
+QEMU's `q800`, mounts it as a second disk. It contains:
+
+```
+DOOM/
+  Ultimate DOOM        the application
+  DOOM1.WAD            shareware WAD from ../../../DOOM SW 1.0.2/DOOM.sea
+  Music/               QuickTime MIDI movies from the same archive
+  DOOM Read Me
+```
+
+```sh
+tools/make-disk.sh                          # -> build/DOOM.hda
+tools/make-disk.sh -w ~/wads/DOOM2.WAD      # add your own WAD
+tools/make-disk.sh --no-shareware -w ~/wads/DOOM.WAD
+DOOM_ARGS="-bench -quit" tools/make-disk.sh # unattended benchmark disk
+```
+
+Only the shareware WAD is freely redistributable. For the registered games,
+supply your own `DOOM.WAD` or `DOOM2.WAD`.
+
+## Release artefacts
+
+`tools/make-dist.sh` writes to `build/dist/`:
+
+| File | Contents |
+| --- | --- |
+| `DOOM-68040-shareware.hda` | ready to play: application, music, shareware `DOOM1.WAD` |
+| `DOOM-68040-noWAD.hda` | same without a WAD; add your own `DOOM.WAD` / `DOOM2.WAD` |
+| `UltimateDOOM-68040.sit.hqx` | the application alone, to drop into an existing Mac DOOM folder |
+
+If no WAD sits next to the application, it asks for one with a standard Open dialog.
+
+## Testing in QEMU
+
+```sh
+ROM=F1ACAD13.rom SYSDISK=MacOS755.hda tools/qemu-q800.sh build/dist/DOOM-68040-shareware.hda
+```
+
+Turn on **32-bit addressing** in the Memory control panel once and restart; the PRAM
+file keeps the setting. Add `-icount shift=5,align=off` for deterministic, repeatable
+benchmark timing: the guest clock then advances at about 31 M instructions per second,
+roughly a 33 MHz 68040. QEMU doesn't model the 68040's caches, per-instruction cycle
+costs or VRAM speed, so use it for before/after comparisons, not absolute numbers.
+
+## Frame rate and benchmark
+
+The **Control** menu has two new items:
+
+- **Show Frame Rate (⌘F)** toggles an FPS counter (a rolling average over 64 frames)
+  in the top-left of the view. The **Q** key also toggles it.
+- **Run Benchmark (⌘B)** plays `demo1`, `demo2` and `demo3` as timedemos: one game
+  tic per rendered frame, as fast as the machine can draw, like PC `-timedemo`. The
+  result is shown in an alert and appended to **DOOM Benchmark Log** next to the
+  application.
+
+For unattended runs, create a text file called **DOOM Args** next to the
+application containing any of:
+
+```
+-bench              run the three-demo benchmark at startup
+-timedemo demoN     time a single demo at startup
+-fps                start with the frame-rate counter on
+-quit               quit when the benchmark finishes
+```
+
+## What changed for Retro68
+
+- `compat/`: maps the Universal Interfaces names the code uses onto Retro68's
+  Multiversal headers. The few QuickTime traps Multiversal lacks come from Apple's
+  Universal Headers 2.0a3, which ship in this repository under `DOOM II 1.0 7.14.95/CW5`.
+- `compat/mac_gcc68k.h`: `FixedMul`/`FixedDiv` as inline 68020+ `muls.l`/`divs.l`,
+  replacing MPW inline traps; WAD byte swaps via GCC builtins.
+- `src/Draw68K.s`, `src/Blit68K.s`: Lion's hand-written column/span renderers and
+  screen blitters, machine-translated from `../libs/*.asm` by `tools/mpw2gas.py`.
+- `rsrc/DoomShell.rsrc.bin`: icons, BNDL/FREF, splash screens, dialogs, menus,
+  cursors and balloon help from the shipped shareware application, with its code
+  removed by `tools/rsrcfilter.py`.
+- Multiplayer (AppleTalk, serial, Comm Toolbox, IPX) is stubbed out
+  (`src/net_stubs.c`). The Multiversal Interfaces have no AppleTalk or Comm Toolbox
+  support.
+
+## Performance notes
+
+Measured with **Run Benchmark** under `qemu-system-m68k -M q800 -icount shift=5`,
+Mac OS 7.5.5, large graphics, default screen size (screenblocks 9):
+
+| Build | demo1 | demo2 | demo3 | average |
+| --- | --- | --- | --- | --- |
+| `-O2`, multi-segment (default) | 28.2 | 28.2 | 26.9 | **27.9 fps** |
+| `-O3` | 28.0 | 28.2 | 26.8 | 27.8 fps |
+| `-O2`, single segment | 27.7 | 27.8 | 26.5 | 27.5 fps |
+
+The gametic counts (5026 / 3836 / 2134) match PC DOOM 1.9's `-timedemo`, so
+demo playback is in sync.
+
+An instruction-count profile (QEMU `hotblocks` plugin) of a demo3 timedemo breaks
+the game's own time down as:
+
+| Function | Share of the game's instructions |
+| --- | --- |
+| `R_DrawColumn68KLowRes` (walls, sprites; asm) | 22.5% |
+| `Blit640Width` (pixel-doubling to the 640×400 window; asm) | 20.6% |
+| `R_DrawSpanAsm` (floors, ceilings; asm) | 13.3% |
+| `R_RenderSegLoop` | 9.5% |
+| everything else | < 3.1% each |
+
+The engine already carried Killough's lump-name hash table (`../src/W_WAD.C`).
+This build adds:
+
+- 68040 code generation, with `FixedMul`/`FixedDiv` inlined as single
+  `muls.l`/`divs.l` instructions instead of MPW trap glue and a library call;
+- Lion's hand-written 68K column, span and blit routines, which the
+  CodeWarrior project also used;
+- no soft-float in the frame path (the FPS counter was `long double`).
+
+On real hardware the pixel-doubling blit costs more than the profile suggests,
+because it writes 256 KB of VRAM per frame. **Options → Small Graphics** avoids it,
+and **Control → Graphic Detail** (low detail) halves the column and span work.

@@ -12,8 +12,9 @@ project(UltimateDOOM C ASM)
 
 set(DOOM_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
-option(DOOM_CPU_FLAGS "Extra CPU flags" "")
 set(DOOM_CPU "68040" CACHE STRING "Target CPU passed to -m (68020, 68030, 68040)")
+set(DOOM_OPT "-O2" CACHE STRING "Optimisation flags")
+option(DOOM_SINGLE_SEGMENT "Link as one CODE segment (no jump-table calls)" OFF)
 
 # ---------------------------------------------------------------------------
 # The sources include headers with inconsistent case ("doomdef.h" vs
@@ -93,7 +94,8 @@ target_include_directories(UltimateDOOM PRIVATE
 
 target_compile_options(UltimateDOOM PRIVATE
     -m${DOOM_CPU} -msoft-float
-    -O2 -fomit-frame-pointer
+    SHELL:${DOOM_OPT}
+    -fomit-frame-pointer
     -ffunction-sections
     -fno-strict-aliasing
     -fcommon
@@ -104,3 +106,6 @@ target_compile_options(UltimateDOOM PRIVATE
 target_link_options(UltimateDOOM PRIVATE
     -m${DOOM_CPU} -msoft-float
     -Wl,-gc-sections)
+if(DOOM_SINGLE_SEGMENT)
+    target_link_options(UltimateDOOM PRIVATE -Wl,--mac-single)
+endif()
