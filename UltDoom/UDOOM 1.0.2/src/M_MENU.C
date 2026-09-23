@@ -1885,6 +1885,29 @@ void M_Ticker (void)
  
 void M_Init (void)
 {
+	// Retro68 build: M_Init runs again when the WADs are reloaded, so undo
+	// the DOOM II adjustments below before (re)applying them.
+	static Boolean		saved = false;
+	static short		mainItems, mainY, readX, readY;
+	static void			(*readDraw)(void), (*readRoutine)(int);
+	
+	if (!saved)
+	{
+		saved = true;
+		mainItems = MainDef.numitems;
+		mainY = MainDef.y;
+		readDraw = ReadDef1.routine;
+		readX = ReadDef1.x;
+		readY = ReadDef1.y;
+		readRoutine = ReadMenu1[0].routine;
+	}
+	MainDef.numitems = mainItems;
+	MainDef.y = mainY;
+	ReadDef1.routine = readDraw;
+	ReadDef1.x = readX;
+	ReadDef1.y = readY;
+	ReadMenu1[0].routine = readRoutine;
+	
 	currentMenu = &MainDef;
 	menuactive = 0;
 	itemOn = currentMenu->lastOn;

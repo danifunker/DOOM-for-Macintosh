@@ -8,9 +8,10 @@ The binary targets the 68040 but uses no FPU instructions, so it runs on
 full 68040 machines (Quadra 700/800/900/950, Centris 650) and on the
 FPU-less 68LC040 (Centris 610, Quadra 605, LC/Performa 475, etc.).
 
-One application plays every IWAD: shareware `DOOM1.WAD`, registered or
-Ultimate `DOOM.WAD`, and `DOOM2.WAD`. Put the WAD next to the application,
-or drop it on the application in the Finder.
+One application plays every base WAD: shareware `DOOM1.WAD`, registered or
+Ultimate `DOOM.WAD`, `DOOM2.WAD`, and Final DOOM's `TNT.WAD` / `PLUTONIA.WAD`
+(played in DOOM II mode). There is no separate DOOM II binary. Put the WAD next
+to the application, or drop it on the application in the Finder.
 
 ## Requirements (on the Mac)
 
@@ -86,6 +87,53 @@ file keeps the setting. Add `-icount shift=5,align=off` for deterministic, repea
 benchmark timing: the guest clock then advances at about 31 M instructions per second,
 roughly a 33 MHz 68040. QEMU doesn't model the 68040's caches, per-instruction cycle
 costs or VRAM speed, so use it for before/after comparisons, not absolute numbers.
+
+## WADs and music
+
+**Base WAD.** The base WAD's file name picks the game: `DOOM1.WAD` (shareware),
+`DOOM.WAD` (registered/Ultimate), `DOOM2.WAD`, `TNT.WAD` or `PLUTONIA.WAD` (DOOM II rules).
+Final DOOM plays with DOOM II's automap level names and story text, because this
+1995 engine predates the Final DOOM executable's strings. The intermission
+graphics come from the WAD and are correct.
+
+**Add-on WADs** (custom maps, graphics, sounds), up to 8 WADs in total:
+
+- **WADs → Add WAD File…** at any time: the WADs reload in place and the game
+  returns to the title screen. **WADs → Remove Added WADs** goes back to the base WAD.
+  The menu lists the WADs in use.
+- Drop `.wad` files on the application in the Finder, whatever their file type.
+- **Load WAD File…** in the start-up dialogs.
+- `-file A.WAD B.WAD` in **DOOM Args** (files next to the application).
+
+The shareware WAD can't be combined with add-ons. Only vanilla-compatible WADs work:
+Boom/limit-removing maps and DeHackEd patches are not supported.
+
+**Music** is QuickTime MIDI, one file per track, in a folder per WAD next to the
+application:
+
+```
+MIDI/
+  DOOM1/     E1M1.MID!  E1M2.MID!  ...  INTRO.MID!  (shipped: the shareware tracks)
+  DOOM/      E2M1.MID!  ...                         (supply your own)
+  DOOM2/     RUNNIN.MID!  STALKS.MID!  ...
+  TNT/       ...
+  MYMAP/     E1M1.MID!                              (music for MYMAP.WAD)
+```
+
+For each track the game looks in the folders of the add-on WADs (last added
+first), then the base WAD's folder, then `MIDI/DOOM1` (for `DOOM.WAD`, whose
+episode 1 music is the same), then the original `Music` folder. Files can be
+QuickTime MIDI movies (`NAME.MID!`, as Lion shipped them) or standard MIDI files
+(`NAME.MID`), which get the `Midi` file type automatically so QuickTime imports
+them. Track names are DOOM's music lump names without the `D_` prefix. Add
+`-musiclog` to DOOM Args to log which file each track came from. Tools:
+`tools/make-disk.sh -m path/to/MYMAP` copies a folder into `MIDI/MYMAP`.
+
+**Network games** compare every player's WADs: the TCP/IP lobby checks a CRC-32 of
+each WAD's contents, in load order. A joiner whose WADs differ is turned away with
+both lists and their CRCs, e.g. `TESTMAP.WAD (063F0766)`. These are standard CRC-32
+values, so they can be checked on any computer. Serial and AppleTalk games don't
+check.
 
 ## Multiplayer
 

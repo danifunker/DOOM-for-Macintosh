@@ -27,6 +27,11 @@
  *     -join a.b.c.d[:port]  join the game hosted at that address
  *     -serial modem|printer 2-player game over a null-modem cable
  *     -appletalk N        N-player game over LocalTalk / EtherTalk
+ *
+ * and for WADs:
+ *
+ *     -file A.WAD B.WAD   add these WADs (next to the application)
+ *     -musiclog           append each music lookup to "DOOM Music Log"
  *     -deathmatch / -altdeath / -nomonsters / -respawn
  *     -skill N            1-5
  *     -warp E M           episode and map (DOOM II: -warp 1 M)
@@ -280,9 +285,23 @@ void MacBench_ReadArgs(void)
 
     if (!f)
         return;
+    extern void MacWads_AddArgFile(const char *name);
+    extern void MacWads_SetMusicLog(Boolean on);
+    Boolean     inFile = false;
+
     while (fscanf(f, "%31s", word) == 1)
     {
-        if (!strcmp(word, "-fps"))
+        if (inFile && word[0] != '-')
+        {
+            MacWads_AddArgFile(word);
+            continue;
+        }
+        inFile = false;
+        if (!strcmp(word, "-file"))
+            inFile = true;
+        else if (!strcmp(word, "-musiclog"))
+            MacWads_SetMusicLog(true);
+        else if (!strcmp(word, "-fps"))
             sArgFPS = true;
         else if (!strcmp(word, "-quit"))
             sAutoQuit = true;

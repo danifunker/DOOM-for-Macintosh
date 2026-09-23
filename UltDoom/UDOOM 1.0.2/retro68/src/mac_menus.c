@@ -28,6 +28,7 @@ void  GetPlayMode(void);
 void  BlackScreen(void);
 void  RedrawScreen(void);
 void  D_CheckNetGame(void);
+void  CloseStatusDialog(void);
 void  MacBench_SyncMenu(void);
 
 static MenuHandle sMenu;
@@ -89,6 +90,10 @@ Boolean MacMenus_Handle(short menuID, short item)
 /* Called at the top of every main-loop pass. */
 void MacMenus_Poll(void)
 {
+    extern void MacWads_Poll(void);
+    extern void MacWads_SyncMenu(void);
+
+    MacWads_Poll();                     /* WADs menu: reload requested */
     if (!sStartPending)
         return;
     sStartPending = false;
@@ -107,10 +112,12 @@ void MacMenus_Poll(void)
     gametic = 0;                        /* everyone starts the lockstep at 0 */
     maketic = 0;
     D_CheckNetGame();                   /* arbitration, players, netgame */
-    BlackScreen();                      /* clear the status line */
+    CloseStatusDialog();                /* clear the status line */
+    BlackScreen();
     RedrawScreen();
     G_InitNew(startskill, startepisode, startmap);
 
     MacMenus_Sync();
     MacBench_SyncMenu();
+    MacWads_SyncMenu();                 /* no WAD changes during a net game */
 }

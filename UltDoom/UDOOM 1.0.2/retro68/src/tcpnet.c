@@ -8,8 +8,9 @@
  * reachable UDP port (kTCPPort; forward it on the router for internet play);
  * joiners behind NAT work because their own outgoing packets open the path.
  *
- * Lobby:  joiner --JOIN--> host            (repeated until answered)
+ * Lobby:  joiner --JOIN(WAD signature)--> host   (repeated until answered)
  *         host  --WELCOME(player, total)-> joiner
+ *               or REJECT(host's WAD list) when the WADs differ
  *         host  --START(total)--> joiners  (repeated until each ACKs)
  * then the usual D_ArbitrateNetStart / tic exchange runs as GAME packets.
  *
@@ -31,7 +32,10 @@
 #define kRecvBufSize    32768
 #define kResendTicks    30              /* half a second */
 
-enum { kMsgJoin = 1, kMsgWelcome, kMsgStart, kMsgAck, kMsgFull, kMsgGame };
+enum { kMsgJoin = 1, kMsgWelcome, kMsgStart, kMsgAck, kMsgFull, kMsgGame, kMsgReject };
+
+unsigned long MacWads_Signature(void);
+void          MacWads_Describe(char *out, int max);
 
 typedef struct {
     unsigned short magic;
@@ -283,7 +287,7 @@ static int PlayerToNode(int player)
 
 static void HostLobby(void)
 {
-    static char pkt[64];
+    static char pkt[64];                /* JOIN: header + 4-byte WAD signature */
     NetHdr     *h = (NetHdr *)pkt;
     char        myIP[20];
     ip_addr     ip;
@@ -298,6 +302,8 @@ static void HostLobby(void)
         sNumPlayers = 2;
 
     TCPNet_LocalAddress(myIP);
+    NetStatus("%sChecking WAD files...", "", 0, 0);
+    (void) MacWads_Signature();             /* compute now so joins are answered quickly */
     if (OpenStream(kTCPPort) != noErr)
         I_Error("TCP/IP: can't open UDP port %d (is another copy running?)", kTCPPort);
 
@@ -319,6 +325,19 @@ static void HostLobby(void)
                 continue;
             if (h->type == kMsgJoin)
             {
+                unsigned long sig = 0;
+
+                /* every player must load the same WADs in the same order */
+                if (n >= (int)(sizeof(NetHdr) + 4))
+                    memcpy(&sig, pkt + sizeof(NetHdr), 4);
+                if (sig != MacWads_Signature())
+                {
+                    char list[160];
+
+                    MacWads_Describe(list, sizeof list);
+                    Send(ip, port, kMsgReject, 0, 0, list, strlen(list) + 1);
+                    continue;
+                }
                 for (p = 1; p < sNumPlayers; p++)
                     if (sPeer[p].used && sPeer[p].ip == ip && sPeer[p].port == port)
                         break;
@@ -365,14 +384,18 @@ static void HostLobby(void)
 
 static void JoinLobby(void)
 {
-    static char pkt[64];
+    static char pkt[224];
     NetHdr     *h = (NetHdr *)pkt;
     ip_addr     ip;
     udp_port    port;
     long        lastSend = 0, started = TickCount();
     Boolean     welcomed = false;
+    unsigned long sig;
+    int         n;
 
     sIsHost = false;
+    NetStatus("%sChecking WAD files...", "", 0, 0);
+    sig = MacWads_Signature();              /* reads every WAD once (cached) */
     if (!TCPNet_ParseAddr(gTCPHostAddr, &sPeer[0].ip, &sPeer[0].port))
         I_Error("TCP/IP: \"%s\" is not an IP address (use a.b.c.d or a.b.c.d:port)",
                 gTCPHostAddr);
@@ -389,18 +412,29 @@ static void JoinLobby(void)
         if (!welcomed && TickCount() - lastSend > kResendTicks * 2)
         {
             NetStatus("Contacting %s ... Esc cancels.", gTCPHostAddr, 0, 0);
-            Send(sPeer[0].ip, sPeer[0].port, kMsgJoin, 0, 0, NULL, 0);
+            Send(sPeer[0].ip, sPeer[0].port, kMsgJoin, 0, 0, &sig, 4);
             lastSend = TickCount();
             if (TickCount() - started > 60 * 60)
                 I_Error("TCP/IP: no answer from %s after a minute.", gTCPHostAddr);
         }
 
-        while (Poll(pkt, sizeof pkt, &ip, &port) >= (int)sizeof(NetHdr))
+        while ((n = Poll(pkt, sizeof pkt - 1, &ip, &port)) >= (int)sizeof(NetHdr))
         {
             if (h->magic != kMagic || ip != sPeer[0].ip)
                 continue;
             switch (h->type)
             {
+                case kMsgReject:
+                {
+                    char mine[160];
+
+                    pkt[n] = 0;
+                    MacWads_Describe(mine, sizeof mine);
+                    TCPNet_Terminate();
+                    I_Error("TCP/IP: the host is playing with different WAD files. "
+                            "Host: %s. You: %s.", pkt + sizeof(NetHdr), mine);
+                    break;
+                }
                 case kMsgWelcome:
                     if (!welcomed)
                     {

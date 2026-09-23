@@ -1804,8 +1804,10 @@ void HandleMenu (short menuId, short menuItem)
 		{
 			extern Boolean MacBench_HandleSubmenu (short menuID, short item);
 			extern Boolean MacMenus_Handle (short menuID, short item);
-			if (!MacBench_HandleSubmenu(menuId, menuItem))
-				(void) MacMenus_Handle(menuId, menuItem);
+			extern Boolean MacWads_HandleMenu (short menuID, short item);
+			if (!MacBench_HandleSubmenu(menuId, menuItem) &&
+				!MacMenus_Handle(menuId, menuItem))
+				(void) MacWads_HandleMenu(menuId, menuItem);
 			break;
 		}
 	}

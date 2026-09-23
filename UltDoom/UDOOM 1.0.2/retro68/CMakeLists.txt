@@ -85,6 +85,7 @@ add_application(UltimateDOOM
     src/tcpnet.c
     src/appletalk_glue.c
     src/mac_menus.c
+    src/mac_wads.c
     src/Draw68K.s
     src/Blit68K.s
     rsrc/DoomShell.rsrc.bin

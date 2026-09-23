@@ -538,14 +538,17 @@ Boolean UpdateBaseWad(char *theWad)
 {
 	if(	CompPStr(theWad, "\pDOOM.WAD")  ||
 		CompPStr(theWad, "\pDOOM1.WAD")  ||
-		CompPStr(theWad, "\pDOOM2.WAD"))
+		CompPStr(theWad, "\pDOOM2.WAD")  ||
+		CompPStr(theWad, "\pTNT.WAD")  ||		// Final DOOM: DOOM II engine and rules
+		CompPStr(theWad, "\pPLUTONIA.WAD"))
 	{
 
 		registered = false;
 		shareware = false;
 		commercial = false;
 			
-		if (CompPStr("\pDOOM2.WAD", theWad))
+		if (CompPStr("\pDOOM2.WAD", theWad) || CompPStr("\pTNT.WAD", theWad) ||
+			CompPStr("\pPLUTONIA.WAD", theWad))
 		{
 			commercial = true;
 		}
@@ -630,6 +633,11 @@ pascal OSErr HandleODOCEvent (AppleEvent *aevt, AEDescList reply, tLong refCon)
 		if (fndrInfo.fdType == '.WAD')
 		{
 		HandleWad :
+			if (!gInStart)
+			{	// Retro68 build: reload the WADs at the next main-loop pass
+				extern void MacWads_RequestReload (void);
+				MacWads_RequestReload();
+			}
 			if (gInStart && UpdateBaseWad(myFSS.name))
 			{
 				gWadFiles[0] = myFSS;
@@ -693,7 +701,7 @@ pascal OSErr HandleODOCEvent (AppleEvent *aevt, AEDescList reply, tLong refCon)
 		{
 			short			ndx;
 			
-			for (ndx = 1; ndx < myFSS.name[0]; ndx++)
+			for (ndx = 1; ndx <= myFSS.name[0]; ndx++)	// was <, which missed the "D" of ".wad"
 				myFSS.name[ndx] = toupper(myFSS.name[ndx]);
 			if (memcmp(".WAD", &myFSS.name[ myFSS.name[0] - 3 ], 4) == 0)
 				goto HandleWad;
@@ -1134,6 +1142,10 @@ void InitManagers (void)
 			if (err != noErr)
 			{
 				err = FSMakeFSSpec(gAppVRefNum, gAppDirId, "\pDOOM2.WAD", &gWadFiles[0]);
+				if (err != noErr)
+					err = FSMakeFSSpec(gAppVRefNum, gAppDirId, "\pTNT.WAD", &gWadFiles[0]);
+				if (err != noErr)
+					err = FSMakeFSSpec(gAppVRefNum, gAppDirId, "\pPLUTONIA.WAD", &gWadFiles[0]);
 				if (err != noErr)
 				{
 					err = FSMakeFSSpec(gAppVRefNum, gAppDirId, "\pDOOM II:DOOM2.WAD", &gWadFiles[0]);
@@ -3731,7 +3743,9 @@ void main (void)
 	{
 		extern void		MacBench_ReadArgs (void);
 		extern Boolean	MacBench_ApplyNetArgs (void);
+		extern void		MacWads_ApplyArgs (void);
 		MacBench_ReadArgs ();			// optional "DOOM Args" file
+		MacWads_ApplyArgs ();			// -file
 		if (!MacBench_ApplyNetArgs ())	// -host / -join skip the dialogs
 			InitialDialog();
 	}
@@ -3785,6 +3799,10 @@ void main (void)
 			extern void MacMenus_Sync (void);
 			MacBench_InstallMenu ();		// Show Frame Rate / Benchmark
 			MacMenus_Install ();			// Multiplayer menu
+			{
+				extern void MacWads_InstallMenu (void);
+				MacWads_InstallMenu ();		// WADs menu
+			}
 			MacMenus_Sync ();		// Show Frame Rate / Run Benchmark
 		}
 		

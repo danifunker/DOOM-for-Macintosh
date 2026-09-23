@@ -124,18 +124,13 @@ void S_ChangeMusic (int musicnum, int looping)
 	if (gOnCD)
 		goto TryCDRom;
 	
-	// Try loading the movie from the application directory, i.e.,
-	// :MIDI:<moviename>.MID!
-	
-	strcpy(musicName, ":Music:");
-	strcat(musicName, music->name);
-	strcat(musicName, ".MID!");
-	c2pstr(musicName);
-	
-	err = FSMakeFSSpec(gAppVRefNum, gAppDirId, (unsigned char *)musicName, &myFSpec);
-	
-	if (err != noErr)
-		goto TryCDRom;
+	// Try loading the movie from the application directory: the per-WAD
+	// :MIDI:<wad>: folders, then the original :Music: folder (mac_wads.c).
+	{
+		extern Boolean MacWads_FindMusic (const char *track, FSSpec *out);
+		if (!MacWads_FindMusic(music->name, &myFSpec))
+			goto TryCDRom;
+	}
 	
 	err = OpenMovieFile(&myFSpec, &fRefNum, fsCurPerm);
 	

@@ -68,6 +68,22 @@ void Z_ClearZone (memzone_t *zone)
 ========================
 */
 
+// Retro68 build: empty the zone again without allocating it (WAD reload).
+void Z_Reset (void)
+{
+	memblock_t	*block;
+	
+	mainzone->blocklist.next = mainzone->blocklist.prev = block =
+		(memblock_t *)( (byte *)mainzone + sizeof(memzone_t) );
+	mainzone->blocklist.user = (void *)mainzone;
+	mainzone->blocklist.tag = PU_STATIC;
+	mainzone->rover = block;
+	
+	block->prev = block->next = &mainzone->blocklist;
+	block->user = NULL;	// free block
+	block->size = mainzone->size - sizeof(memzone_t);
+}
+
 void Z_Init (void)
 {
 	memblock_t	*block;
