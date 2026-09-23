@@ -26,7 +26,7 @@
 #include <string.h>
 
 #define kWadsMenuID     212
-#define kMaxWadFiles    8               /* MAXWADFILES in D_MAIN.C */
+#define kMaxWadFiles    MAXWADFILES     /* DOOMDEF.H */
 
 enum { iWadAdd = 1, iWadRemove, iWadSep, iWadFirst };
 

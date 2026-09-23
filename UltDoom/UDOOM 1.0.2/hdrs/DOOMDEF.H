@@ -582,6 +582,9 @@ typedef enum { mission_doom, mission_doom2, mission_tnt, mission_plut } gamemiss
 extern	gamemission_t	gamemission;
 void D_SetGameMission (void);
 
+// WAD, DeHackEd and lump files that can be loaded at once (gWadFiles).
+#define MAXWADFILES		32
+
 extern	boolean		deathmatch;			// only if started as net death
 extern	boolean		netgame;			// only true if >1 player
 extern	boolean		playeringame[MAXPLAYERS];

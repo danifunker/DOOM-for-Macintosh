@@ -67,7 +67,6 @@
 
 #include <ctype.h>
 
-#define MAXWADFILES             8
 
 CTabHandle		gClut;
 extern int							usejoystick;
@@ -1797,6 +1796,11 @@ void UpdateLoadWadString(Rect *r)
 				*chPtr++ = ',';
 				*chPtr++ = ' ';
 				len += 2;
+			}
+			if (len + gWadFiles[i].name[0] > 240)
+			{	// Str255: say how many more there are
+				len += sprintf((char *)chPtr, "+%d more", gNumWads - i);
+				break;
 			}
 			len += gWadFiles[i].name[0];
 			// ConvertPToCStr((unsigned char *) gWadFiles[i].name, (unsigned char *) chPtr);

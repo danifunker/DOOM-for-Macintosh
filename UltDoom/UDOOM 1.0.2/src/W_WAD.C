@@ -25,7 +25,6 @@
 
 #include "W_WAD.PROTO.H"
 
-#define MAXWADFILES     8
 extern FSSpec			gWadFiles[MAXWADFILES];
 extern int				gNumWads;
 
@@ -167,10 +166,11 @@ void W_CloseWadFiles (void)
 {
 	int i;
 	
-	for (i = 0; i < gNumWads; i++)
-	{
-		FSClose (lumpinfo->handle);
-	}
+	// Each file's lumps share its refNum; close each file once.
+	for (i = 0; i < numlumps; i++)
+		if (lumpinfo[i].handle != -1 &&
+			(i == 0 || lumpinfo[i].handle != lumpinfo[i - 1].handle))
+			FSClose (lumpinfo[i].handle);
 }
 
 void W_AddFile (int fileIndex)
@@ -210,7 +210,7 @@ StartOver :
 	CopyPStr(fileSpec.name, tempName);
 	p2cstr(tempName);
 	
-	err = FSpOpenDF(&fileSpec, fsRdWrPerm, &fileRefNum);
+	err = FSpOpenDF(&fileSpec, fsRdPerm, &fileRefNum);
 	if (err != noErr)
 	{
 	CheckForFile0 :
@@ -412,7 +412,7 @@ void W_Reload (void)
 	if (err != noErr)
 		I_Error ("W_Reload: couldn't open %s", reloadname);
 	
-	err = FSpOpenDF(&fileSpec, fsRdWrPerm, &fileRefNum);
+	err = FSpOpenDF(&fileSpec, fsRdPerm, &fileRefNum);
 	if (err != noErr)
 		I_Error ("W_Reload: couldn't open %s", reloadname);
 	
@@ -712,7 +712,7 @@ void W_ReadLump (int lump, void *dest)
 		if (err != noErr)
 			I_Error ("W_ReadLump: couldn't open %s",reloadname);
 		
-		err = FSpOpenDF(&fileSpec, fsRdWrPerm, &fileRefNum);
+		err = FSpOpenDF(&fileSpec, fsRdPerm, &fileRefNum);
 		if (err != noErr)
 			I_Error ("W_ReadLump: couldn't open %s",reloadname);
 	}

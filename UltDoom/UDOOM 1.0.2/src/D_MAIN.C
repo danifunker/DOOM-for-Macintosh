@@ -121,7 +121,6 @@ boolean				advancedemo = 0;
 
 gamestate_t			wipegamestate = GS_DEMOSCREEN;
 
-#define MAXWADFILES             8
 
 char    wadfile[1024];          // primary wad file
 char    mapdir[1024];           // directory of development maps
