@@ -11,8 +11,16 @@ def qm(*cmds):
     subprocess.run(['./qm.py', *cmds], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def running():
-    return subprocess.run(['pgrep', '-f', 'qemu-system-m68k -M q800'],
-                          stdout=subprocess.DEVNULL).returncode == 0
+    # our QEMU: the one started in this directory (others may be running)
+    here = os.getcwd()
+    for pid in subprocess.run(['pgrep', 'qemu-system-m68'], capture_output=True,
+                              text=True).stdout.split():
+        try:
+            if os.readlink('/proc/%s/cwd' % pid) == here:
+                return True
+        except OSError:
+            pass
+    return False
 
 def shot():
     qm('shot sd'); time.sleep(0.3)
