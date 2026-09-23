@@ -203,6 +203,59 @@ Boolean MacWads_HandleMenu(short menuID, short item)
 }
 
 /* ------------------------------------------------------------------------ */
+/* Boom / MBF detection                                                     */
+
+/*
+ * This engine plays vanilla and limit-removing levels.  Levels made for
+ * Boom or MBF use line and sector specials it doesn't know (doors, lifts
+ * and exits that do nothing), so say so once when such a WAD is loaded.
+ */
+static int CountBoomSpecials(int lump, int recsize, int specoffset, int vanillamax)
+{
+    const unsigned char *p, *base;
+    int                  len = W_LumpLength(lump), n = 0;
+
+    if (len < recsize)
+        return 0;
+    base = p = W_CacheLumpNum(lump, PU_STATIC);
+    for (; p + recsize <= base + len; p += recsize)
+    {
+        int special = p[specoffset] | (p[specoffset + 1] << 8);
+
+        if (special > vanillamax)
+            n++;
+    }
+    Z_Free((void *)base);
+    return n;
+}
+
+void MacWads_CheckFeatures(void)
+{
+    int  i, lines = 0, sectors = 0, maps = 0;
+    int  iwadhandle = numlumps ? lumpinfo[0].handle : -1;
+    char msg[256];
+
+    for (i = 0; i + 8 < numlumps; i++)
+    {
+        if (lumpinfo[i].handle == iwadhandle)
+            continue;                           /* only PWAD levels */
+        if (strncasecmp(lumpinfo[i + 2].name, "LINEDEFS", 8) ||
+            strncasecmp(lumpinfo[i + 8].name, "SECTORS", 8))
+            continue;
+        maps++;
+        lines += CountBoomSpecials(i + 2, 14, 6, 141);    /* DOOM II's last */
+        sectors += CountBoomSpecials(i + 8, 26, 22, 17);
+    }
+    if (lines + sectors == 0)
+        return;
+    sprintf(msg, "These WADs were made for Boom or MBF: %d line and %d sector "
+            "specials in %d level%s are not supported by this version of DOOM. "
+            "Some doors, lifts, exits or effects will not work.",
+            lines, sectors, maps, maps == 1 ? "" : "s");
+    Alert1(msg);
+}
+
+/* ------------------------------------------------------------------------ */
 /* Reload                                                                   */
 
 /* Close every WAD file W_AddFile opened.  Lumps are stored file by file,
@@ -220,13 +273,6 @@ static void CloseWads(void)
 static void Reload(void)
 {
     int i;
-
-    if (shareware && gNumWads > 1)
-    {
-        Alert1("The Shareware version of DOOM does not support multiple WAD files. "
-               "Upgrade to the Registered version today!");
-        gNumWads = 1;
-    }
 
     /* leave whatever is running */
     timingdemo = false;
@@ -271,6 +317,8 @@ static void Reload(void)
     BlackScreen();
     RedrawScreen();
     RebuildList();
+    MacWads_CheckFeatures();
+    HideCursor();
     D_StartTitle();
 }
 

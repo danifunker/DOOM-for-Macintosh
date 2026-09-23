@@ -923,7 +923,12 @@ void M_ChooseSkill(int choice)
  
 void M_Episode(int choice)
 {
-	if (shareware && choice)
+	// Episodes the loaded WADs don't have (DOOM1.WAD has only the first;
+	// an add-on WAD may bring more).
+	char	lump[5];
+
+	sprintf(lump, "E%dM1", choice + 1);
+	if (!commercial && W_CheckNumForName(lump) < 0)
 	{
 		M_StartMessage(SWSTRING,NULL,false);
 		M_SetupNextMenu(&ReadDef1);

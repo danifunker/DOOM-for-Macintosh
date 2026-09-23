@@ -1652,7 +1652,13 @@ void G_InitNew (skill_t skill, int episode, int map)
 		episode = 4;
 	
 	if (episode > 1 && shareware)
-		episode = 1;				// only start episode 1 on shareware		
+	{	// only episode 1 on shareware, unless an add-on WAD has the level
+		char	lump[5];
+
+		sprintf(lump, "E%dM%d", episode, map < 1 ? 1 : map > 9 ? 9 : map);
+		if (W_CheckNumForName(lump) < 0)
+			episode = 1;
+	}
 	if (map < 1)
 		map = 1;
 	if (map > 9 && !commercial)

@@ -1354,6 +1354,10 @@ void D_DoomMain (void)
 	DrawStatusDialog(TRUE);
 	HU_Init ();
 	ST_Init ();
+	{
+		extern void MacWads_CheckFeatures (void);
+		MacWads_CheckFeatures ();	// warn about Boom-only levels
+	}
 	StatusDialog(80, 80);
 	
 	CheckBetaTest ();

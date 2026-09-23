@@ -3731,16 +3731,6 @@ void main (void)
 			gHasHelpManager = TRUE;
 	}
 
-	if (gNumWads > 1)
-	{
-		if (shareware)
-		{
-			ParamText("\pThe Shareware version of DOOM does not support multiple WAD files. Upgrade to the Registered version today!", "\p", "\p", "\p");
-			(void) Alert(rAlertErrGeneral, NULL);
-			gNumWads = 1;
-			PaintRect(&gDoomWindow->portRect);
-		}
-	}
 
 	{
 		extern void		MacBench_ReadArgs (void);
@@ -3748,6 +3738,7 @@ void main (void)
 		extern void		MacWads_ApplyArgs (void);
 		MacBench_ReadArgs ();			// optional "DOOM Args" file
 		MacWads_ApplyArgs ();			// -file
+
 		if (!MacBench_ApplyNetArgs ())	// -host / -join skip the dialogs
 			InitialDialog();
 	}
