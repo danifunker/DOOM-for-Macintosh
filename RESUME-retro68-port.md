@@ -27,14 +27,59 @@ Paste this whole file as the first message of a new session to continue.
 - Release pipeline: both `tools/release.sh` and GitHub Actions (`.github/workflows/retro68.yml`).
   Nothing pushed yet; pushing the branch / tags needs the user's OK.
 
+## >>> WHERE WE STOPPED (2026-09-23, late) <<<
+
+The user asked for a personal "full version" test disk from their GOG ISO, and flagged that
+**music may not be loading correctly for some add-ons**. Work in progress:
+
+1. **Fix the music log first.** `-musiclog` writes "DOOM Music Log" via `fopen(..., "a")`
+   (mac_wads.c: `LogMusic`, `MacWads_SetMusicLog`, `TryMusic`); Retro68's append mode loses
+   later lines (the log always shows the same 2 lines). Rewrite as a File Manager helper:
+   FSMakeFSSpec(gAppVRefNum, gAppDirId, "\pDOOM Music Log"), FSpCreate 'ttxt'/'TEXT' if
+   fnfErr, FSpOpenDF, SetFPos(fsFromLEOF), FSWrite (CR line ends), FSClose, FlushVol.
+   S_ChangeMusic (src/S_SOUND.C) already calls `MacWads_LogMusicErr` for each QuickTime step
+   ("no file to open", NewMovieFromFile / LoadMovieIntoRam / StartMovie errors, "playing").
+2. **Then find out why music fails.** Run the full disk with `-musiclog` for NERVE, SIGIL,
+   Master Levels; read the log after a *graceful* shutdown. Known facts: conversion works
+   (MIDI/SIGIL/E5M1.MID, 22211 bytes, typed Midi/TVOD, created in QEMU). Suspect: plain
+   .MID files may not open through `NewMovieFromFile` on QuickTime 2.x (needs the MIDI
+   import component; the older tested path used Lion's .MID! QuickTime movies). If so, try
+   `ConvertFileToMovieFile` or `NewMovieFromFile` with an import, or keep the .MID! route.
+   QEMU has no audio, so rely on the log. Also `gOnCD` in S_ChangeMusic sticks once set.
+3. Test UMAPINFO level flow (the user said **don't add an -autoexit test helper**; test by
+   playing or on the real Quadra): next/nextsecret, intermission names/pictures, finales
+   (NERVE MAP08 endcast, SIGIL E5M8 endpic CREDIT), Master Levels bossaction (82/96, tags
+   666/667, implemented by borrowing lines[0] with a living player as activator).
+4. Give the user the personal full disk (below) once music is right.
+
+### Personal full disk (never commit or distribute)
+
+- GOG ISO was copied by the user to `~/Desktop/DaniGOGGames.iso`. Extracted to
+  `~/doom-mac-testenv/gog/`: `dos/` (classic DOS IWADs: DOOM.WAD Ultimate 1.9 md5 c4fe9fd9...,
+  DOOM2 1.9 25e1459c..., TNT 4e158d99..., PLUTONIA 75c8cf89...), `kex/` (2024 re-release:
+  nerve, masterlevels, sigil, sigil2, id1, iddm1, and KEX IWADs), `master/` (20 original
+  Master Levels WADs + TXT).
+- `~/doom-mac-testenv/gog/make-full-disk.sh [out.hda] ["DOOM Args"]` builds a 200 MB disk:
+  DOS IWADs + NERVE/MASTERLEVELS/SIGIL/SIGIL2 at the root, "Master Levels" folder.
+  E.g. `make-full-disk.sh ~/doom-mac-testenv/qemu/doom-master.hda "-file SIGIL.WAD -warp 5 1 -musiclog"`.
+- Supported: NERVE, masterlevels.wad, SIGIL, SIGIL II (all vanilla maps + UMAPINFO).
+  Not supported on Lion's engine: `id1.wad` (Legacy of Rust, ID24), `iddm1.wad` (Boom specials).
+- The 20 separate Master Levels WADs have no names (vanilla behaviour); the combined
+  MASTERLEVELS.WAD has everything.
+
 ## Open work (priority order)
 
-1. **Performance: ~30-35 fps on a Quadra 800** (still LC040-safe, no FPU). QEMU icount baseline
-   27.7 fps (demo1 27.9 / demo2 28.2 / demo3 26.3). Ideas below.
-2. Test with real community WADs (limit-removing maps, DeHackEd mods, Boom-map detection):
-   need the user's OK to download test WADs from idgames.
-3. DOOM II splash/About artwork (the Mac DOOM II app's resource fork; `DOOM II 1.0.2/DOOM II`).
-4. Push `retro68-port` to the `danifunker` remote and tag a first release (ask first).
+1. Music (above), then UMAPINFO flow testing, then give the user the full disk.
+2. **Performance: ~30-35 fps on a Quadra 800.** QEMU icount 28.0 fps (was 27.7). Done: 68040
+   span drawer `R_DrawSpan040` (src/Fast68K.s). Every speed tweak goes behind a runtime switch
+   (user's request): Benchmark > "Lion's Original Drawers" / `-classic`; log records it.
+   Next ideas: addx column drawer (icount can't show 68040 cycle gains; MAME's Quadra could,
+   but it stops on a "known problems" notice that needs one keypress in its window, and the
+   user doesn't want their desktop driven with xdotool), scanline blit mode, MOVE16 blit.
+   Profile data from a single-segment build: `~/doom-mac-testenv/prof/` (hotblocks.txt; map
+   PCs with build-prof/UltimateDOOM.code.bin.gdb and "MacBench_ReadArgs at" in the log).
+3. The user tests 1.1.0-beta1 on the real Quadra (sent: build-release/release/*).
+4. DOOM II splash/About artwork; push branch + tag a release when the user says so.
 
 ## Done this session (2026-09-23, after the first resume)
 
@@ -53,6 +98,10 @@ Paste this whole file as the first message of a new session to continue.
   messages, level names, finale texts, cast names; misc values hooked). Tested in QEMU with
   `~/doom-mac-testenv/wadtest/deh/TEST.DEH` (150% health, 99 bullets, "E1M1: DEH WORKS").
 - Music: `retro68/src/mus2mid.c`; lookup order in `MacWads_FindMusic` (mac_wads.c).
+- Mouse: captured only while playing a level; DOOM's menu/pause/title/demos release it
+  (I_StartTic `gMouseCaptured`). `-mouse` in DOOM Args.
+- UMAPINFO (`retro68/src/umapinfo.c`) + E5/E6, `S_ChangeMusicByName`, dynamic episode menu,
+  WI level-name text, FMI finale; `make-disk.sh --no-music`; `qemu-shutdown.py`.
 - Build: `-w` was silently disabling `-Werror=implicit-function-declaration`; replaced by
   targeted `-Wno-*` flags; `-std=gnu17` (the CI image's GCC 16 defaults to C23).
 
@@ -165,6 +214,11 @@ code dominate; worth re-profiling with the timedemo alone).
   `alt/TESTMAP.WAD` (1 byte changed); `TESTMAP/INTRO.MID!.bin`. `udptest/` = MacTCP UDP proof of concept.
 
 ## Gotchas learned (save time)
+
+- User preference: keep answers simple; they got confused by many versions/labels. One
+  playable build at a time.
+- Always shut the emulated Mac down gracefully (`~/doom-mac-testenv/qemu/shutdown.py`)
+  before reading its disk; `bench.sh` now does too. Don't start a 2nd QEMU while one runs.
 
 - Patch Lion's Mac Roman files with Python (latin1); blank lines often hold tabs. A helper with
   whitespace-flexible matching lives in the session scratchpad (`lp.py`); recreate if needed.
