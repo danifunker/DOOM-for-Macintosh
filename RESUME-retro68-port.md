@@ -12,23 +12,49 @@ Paste this whole file as the first message of a new session to continue.
 - Target hardware: **Quadra 800 (68040/33) and 68LC040 machines, 32 MB RAM minimum.** Later the user
   will test on a physical Q800 and on their own MiSTer Quadra 800 FPGA core (`~/MacQuadra800_eth`).
 
-## Decisions already made by the user (open work, in priority order)
+## Decisions already made by the user
 
-1. **Performance: hit ~30–35 fps on a Quadra 800** (also must still run on LC040, no FPU).
-2. **Support WADs "up to ~2000" (the year)**, like other engines do: raise vanilla limits
-   (limit-removing, as in Crispy DOOM etc.) + **DeHackEd** (.deh files and DEHACKED lumps). Confirm with
-   the user how far to go toward **Boom/MBF** (generalised linedefs etc.; large, heavy on a 68040).
-3. **Correct level names and story/finale screens for all official IWADs**: DOOM shareware /
-   registered / Ultimate (E4), DOOM II, Final DOOM TNT and Plutonia. The user said yes to downloading
-   id's GPL `linuxdoom-1.10` source (`d_englsh.h`: HUSTR_*, PHUSTR_*, THUSTR_*, E?TEXT, C?TEXT, P?TEXT,
-   T?TEXT) for the text. Add a gamemission concept (doom, doom2, pack_tnt, pack_plut) set from the base WAD name
-   in `UpdateBaseWad` (`src/I_MAIN.C`); use it in HU_STUFF (automap names), F_FINALE (texts/backgrounds),
-   and wherever `commercial` picks text. Check what Lion's source already has for Ultimate E4.
-4. Minimum memory: bump the `SIZE` resource (`retro68/rsrc/UltimateDOOM.r`, now 16 MB preferred /
-   6 MB minimum) to match a 32 MB target, e.g. 24 MB preferred / 12 MB minimum. Check the zone size logic.
-5. Still open / offered: raise `MAXWADFILES` (8, defined in D_MAIN.C, I_MAIN.C, W_WAD.C, and mac_wads.c
-   kMaxWadFiles); DOOM II splash/About artwork (needs the Mac DOOM II app's resource fork; the repo has
-   `DOOM II 1.0.2/DOOM II` and `DOOM II 1.0 7.14.95/Installer/Doom II.cpt`, which may contain it).
+- **Full Boom/MBF is a separate project** (branch `prboom-68k`, notes in `RESUME-prboom-68k.md` on
+  that branch). This branch stays on Lion's engine: vanilla + limit-removing + DeHackEd/BEX.
+  WADs whose levels use Boom/MBF specials get an alert saying some things won't work.
+- Shareware: no PWAD restriction in code (user: "skip the shareware parts... just ship the
+  shareware WAD"). Data-driven checks stay (episodes that don't exist, plasma/BFG graphics).
+- WAD music: converted on first use (no prompt) and cached as `MIDI/<WAD>/<TRACK>.MID`.
+- FPS toggle stays runtime-only (never saved in prefs).
+- **Always stop the emulated Mac gracefully** (`tools/qemu-shutdown.py` / testenv
+  `shutdown.py`), never `qm.py quit` while the Mac is running; disk caches otherwise don't reach
+  the image.
+- Release pipeline: both `tools/release.sh` and GitHub Actions (`.github/workflows/retro68.yml`).
+  Nothing pushed yet; pushing the branch / tags needs the user's OK.
+
+## Open work (priority order)
+
+1. **Performance: ~30-35 fps on a Quadra 800** (still LC040-safe, no FPU). QEMU icount baseline
+   27.7 fps (demo1 27.9 / demo2 28.2 / demo3 26.3). Ideas below.
+2. Test with real community WADs (limit-removing maps, DeHackEd mods, Boom-map detection):
+   need the user's OK to download test WADs from idgames.
+3. DOOM II splash/About artwork (the Mac DOOM II app's resource fork; `DOOM II 1.0.2/DOOM II`).
+4. Push `retro68-port` to the `danifunker` remote and tag a first release (ask first).
+
+## Done this session (2026-09-23, after the first resume)
+
+- SIZE 24 MB / 12 MB; zone up to 24 MB.
+- `gamemission` (doom/doom2/tnt/plut) from the base WAD name: TNT/Plutonia level names and
+  finale texts (from linuxdoom-1.10), Final DOOM teleporter z quirk.
+- MAXWADFILES 32 (one define in DOOMDEF.H); WADs opened read-only; W_CloseWadFiles fixed.
+- Limit removal: visplanes (hashed), openings, drawsegs, vissprites, intercepts, spechit,
+  plats, ceilings, buttons, scrolling lines, anims, switches, brain targets; savegame buffer
+  sized from the level. `P_GrowArray` helper in P_SPEC.C.
+- Map loading: unsigned indices, int blockmap (>64 KB), REJECT padding, missing
+  textures/flats/unknown things tolerated, texture-name hash.
+- Boom: ANIMATED/SWITCHES lumps, F_/S_ marker coalescing (FF_START/SS_START), PWAD sprite
+  replacement; DeePsea tall patches; `R_DrawColumnHeight` for walls not 128 tall.
+- DeHackEd/BEX: `retro68/src/deh.c` (DEH_Init after W_InitMultipleFiles; DEH_String used for
+  messages, level names, finale texts, cast names; misc values hooked). Tested in QEMU with
+  `~/doom-mac-testenv/wadtest/deh/TEST.DEH` (150% health, 99 bullets, "E1M1: DEH WORKS").
+- Music: `retro68/src/mus2mid.c`; lookup order in `MacWads_FindMusic` (mac_wads.c).
+- Build: `-w` was silently disabling `-Werror=implicit-function-declaration`; replaced by
+  targeted `-Wno-*` flags; `-std=gnu17` (the CI image's GCC 16 defaults to C23).
 
 ## Repo layout / what exists
 
@@ -51,9 +77,12 @@ Source tree: `UltDoom/UDOOM 1.0.2/` (`src/`, `hdrs/`, Mac Roman encoding, conver
 | `src/net_stubs.c` | CTB/IPX stubs. |
 | `rsrc/DoomShell.rsrc.bin` | Resources from the shipped shareware app (`DOOM SW 1.0.2/DOOM.sea`) minus CODE/DATA/cfrg/SIZE/vers (`tools/rsrcfilter.py`). |
 | `rsrc/UltimateDOOM.r` | SIZE (16 MB / 6 MB) and vers 1.0.2r68. |
-| `tools/make-disk.sh` | rb-cli: HFS → APM + SCSI driver disk; `-w WAD`, `-m MIDIFOLDER`, `--no-shareware`, `-a app.bin`, `DOOM_ARGS=...`. Music in `MIDI/DOOM1`. App renamed "Ultimate DOOM" via `tools/mbrename.py`. |
+| `tools/make-disk.sh` | rb-cli: HFS → APM + SCSI driver disk; `-w WAD`, `-m MIDIFOLDER`, `--no-shareware`, `--no-music`, `-a app.bin`, `DOOM_ARGS=...`, `BUILD_DIR=`. Works with old (`new --fs`) and new (`new volume hfs`) rb-cli. |
 | `tools/make-dist.sh` | `build/dist/`: DOOM-68040-shareware.hda, DOOM-68040-noWAD.hda, UltimateDOOM-68040.sit.hqx. |
 | `tools/qemu-q800.sh` | Reproducible QEMU launcher (ROM/SYSDISK/PRAM env vars). |
+| `tools/qemu-shutdown.py` | Graceful shutdown: quits DOOM, Finder Special > Shut Down (closed-loop on screenshots). |
+| `tools/release.sh` | Versioned release build into `build-release/release/`; used by CI. |
+| `src/deh.c`, `src/mus2mid.c` | DeHackEd/BEX; MUS to MIDI. |
 | `README.md` | Full user docs (build, packaging, benchmark, multiplayer, WADs and music, performance notes). |
 
 Build:
@@ -136,6 +165,14 @@ code dominate; worth re-profiling with the timedemo alone).
   `alt/TESTMAP.WAD` (1 byte changed); `TESTMAP/INTRO.MID!.bin`. `udptest/` = MacTCP UDP proof of concept.
 
 ## Gotchas learned (save time)
+
+- Patch Lion's Mac Roman files with Python (latin1); blank lines often hold tabs. A helper with
+  whitespace-flexible matching lives in the session scratchpad (`lp.py`); recreate if needed.
+- `grep` in this environment is ugrep with `-I` (skips binary files): use Python to search binaries.
+- `pkill -f qemu...` from a shell whose command line contains that string kills the shell itself.
+- Another project's QEMU (`~/cdv-testenv`, -m 64) may be running; leave it alone.
+- Crash mapping: `./qm.py "xp /16i 0xPC"` disassembles guest memory at the faulting PC.
+- `W_CheckNumForName` is called before WADs load (splash screen music).
 
 - Source is Mac Roman: use `LC_ALL=C grep -a`, and edit via Python binary read/replace (latin1).
 - `"\p..."` literals can't initialise arrays in Retro68 GCC: write `"\011DOOM2.WAD"` (octal length).
