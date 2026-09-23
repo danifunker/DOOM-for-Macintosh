@@ -1,1 +1,24 @@
-#include "CodeFragmentTypes.r"Include "Doom.rsrc";Include "Splash.rsrc";Include "PPC.rsrc";Include "SktListener.rsrc";resource 'cfrg' (0) {	{	/* array memberArray: 1 elements */		/* [1] */		kPowerPC,		kFullLib,		kNoVersionNum,		kNoVersionNum,		262144,		kNoAppSubFolder,		kIsApp,		kOnDiskFlat,		kZeroOffset,		kWholeFork,		"Doom 2"	}};
+
+#include "CodeFragmentTypes.r"
+
+Include "Doom.rsrc";
+Include "Splash.rsrc";
+Include "PPC.rsrc";
+Include "SktListener.rsrc";
+
+resource 'cfrg' (0) {
+	{	/* array memberArray: 1 elements */
+		/* [1] */
+		kPowerPC,
+		kFullLib,
+		kNoVersionNum,
+		kNoVersionNum,
+		262144,
+		kNoAppSubFolder,
+		kIsApp,
+		kOnDiskFlat,
+		kZeroOffset,
+		kWholeFork,
+		"Doom 2"
+	}
+};

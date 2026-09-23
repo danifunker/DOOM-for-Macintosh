@@ -1,1 +1,11 @@
-/* HU_STUFF.C */void HU_Init(void);void HU_Stop(void);void HU_Start(void);void HU_Drawer(void);void HU_Erase(void);void HU_Ticker(void);void HU_queueChatChar(char c);char HU_dequeueChatChar(void);boolean HU_Responder(event_t *ev);
+
+/* HU_STUFF.C */
+void HU_Init(void);
+void HU_Stop(void);
+void HU_Start(void);
+void HU_Drawer(void);
+void HU_Erase(void);
+void HU_Ticker(void);
+void HU_queueChatChar(char c);
+char HU_dequeueChatChar(void);
+boolean HU_Responder(event_t *ev);

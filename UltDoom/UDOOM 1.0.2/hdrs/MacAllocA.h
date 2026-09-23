@@ -1,1 +1,5 @@
-extern Boolean InitAllocA (tLong initialStackSize);extern void PushRoutineAllocA (void);extern void PopRoutineAllocA (void);extern void *alloca (tLong sizeNeeded);
+
+extern Boolean InitAllocA (tLong initialStackSize);
+extern void PushRoutineAllocA (void);
+extern void PopRoutineAllocA (void);
+extern void *alloca (tLong sizeNeeded);

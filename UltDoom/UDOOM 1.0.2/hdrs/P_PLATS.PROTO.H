@@ -1,1 +1,8 @@
-/* P_PLATS.C */void T_PlatRaise(plat_t *plat);int EV_DoPlat(line_t *line, plattype_e type, int amount);void P_ActivateInStasis(int tag);void EV_StopPlat(line_t *line);void P_AddActivePlat(plat_t *plat);void P_RemoveActivePlat(plat_t *plat);
+
+/* P_PLATS.C */
+void T_PlatRaise(plat_t *plat);
+int EV_DoPlat(line_t *line, plattype_e type, int amount);
+void P_ActivateInStasis(int tag);
+void EV_StopPlat(line_t *line);
+void P_AddActivePlat(plat_t *plat);
+void P_RemoveActivePlat(plat_t *plat);

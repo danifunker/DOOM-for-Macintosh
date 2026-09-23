@@ -1,1 +1,5 @@
-/* R_SEGS.C */void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2);void R_RenderSegLoop(void);void R_StoreWallRange(int start, int stop);
+
+/* R_SEGS.C */
+void R_RenderMaskedSegRange(drawseg_t *ds, int x1, int x2);
+void R_RenderSegLoop(void);
+void R_StoreWallRange(int start, int stop);

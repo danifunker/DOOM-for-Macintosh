@@ -1,1 +1,14 @@
-/* D_NET.C */int NetbufferSize(void);unsigned NetbufferChecksum(void);int ExpandTics(int low);void HSendPacket(int node, int flags);boolean HGetPacket(void);void GetPackets(void);void NetUpdate(void);void CheckAbort(void);void D_ArbitrateNetStart(void);void D_CheckNetGame(void);void D_QuitNetGame(void);void TryRunTics(void);
+
+/* D_NET.C */
+int NetbufferSize(void);
+unsigned NetbufferChecksum(void);
+int ExpandTics(int low);
+void HSendPacket(int node, int flags);
+boolean HGetPacket(void);
+void GetPackets(void);
+void NetUpdate(void);
+void CheckAbort(void);
+void D_ArbitrateNetStart(void);
+void D_CheckNetGame(void);
+void D_QuitNetGame(void);
+void TryRunTics(void);

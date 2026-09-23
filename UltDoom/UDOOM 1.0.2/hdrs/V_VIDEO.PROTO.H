@@ -1,1 +1,7 @@
-/* V_VIDEO.C */void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty, int destscrn);void V_DrawPatch(int x, int y, int scrn, patch_t *patch);void V_DrawPatchFlipped(int x, int y, int scrn, patch_t *patch);void V_DrawPatchDirect(int x, int y, int scrn, patch_t *patch);void V_Init(void);
+
+/* V_VIDEO.C */
+void V_CopyRect(int srcx, int srcy, int srcscrn, int width, int height, int destx, int desty, int destscrn);
+void V_DrawPatch(int x, int y, int scrn, patch_t *patch);
+void V_DrawPatchFlipped(int x, int y, int scrn, patch_t *patch);
+void V_DrawPatchDirect(int x, int y, int scrn, patch_t *patch);
+void V_Init(void);
