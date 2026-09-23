@@ -54,6 +54,11 @@ rb put-macbinary "$flat" "$sw/DOOM Read Me.bin"
 if [ "$shareware" = 1 ]; then
     rb put-macbinary "$flat" "$sw/DOOM1.WAD.bin"
 fi
+if [ -n "${DOOM_ARGS:-}" ]; then
+    printf "%s\n" "$DOOM_ARGS" > "$work/DOOM Args"
+    rb put "$flat" "$work/DOOM Args" "/DOOM Args"
+    rb chmeta "$flat" "/DOOM Args" --type TEXT --creator ttxt
+fi
 for w in "${wads[@]}"; do
     name=$(basename "$w" | tr '[:lower:]' '[:upper:]')
     rb put "$flat" "$w" "/$name"

@@ -563,11 +563,30 @@ void D_DoomLoop (void)
 	
 	FlushEvents( keyDownMask | keyUpMask | mDownMask | mUpMask | autoKeyMask, 0);
 
+	{
+		extern void MacBench_Autostart (void);
+		MacBench_Autostart ();		// "DOOM Args" -bench / -timedemo
+	}
+
 	while (TRUE)
 	{
 		extern int		gJustLoaded;
 		
-		TryRunTics ();                  // will run at least one tic
+		if (singletics)
+		{
+			// Timedemo: exactly one tic per rendered frame, no waiting.
+			I_StartTic ();
+			D_ProcessEvents ();
+			G_BuildTiccmd (&netcmds[consoleplayer][maketic%BACKUPTICS]);
+			if (advancedemo)
+				D_DoAdvanceDemo ();
+			M_Ticker ();
+			G_Ticker ();
+			gametic++;
+			maketic++;
+		}
+		else
+			TryRunTics ();                  // will run at least one tic
 				
 #ifdef RANGECHECK
 		Z_CheckHeap();					// checks the entire Doom heap zone

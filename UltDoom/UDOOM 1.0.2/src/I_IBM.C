@@ -62,8 +62,7 @@ Point	*LMRawMouse = (Point *) 0x82C;
 #include "SerialNet.h"
 #include "soundst.h"
 
-#undef __LION_SHOWFRAMERATE
-#define __LION_SHOWFRAMERATE 0
+// __LION_SHOWFRAMERATE comes from DOOMDEF.H (the Retro68 build turns it on).
 
 void I_ReinitMouse (void);
 
@@ -1025,7 +1024,7 @@ void I_FinishUpdate (void)
 	{
 		long			tc, diff;
 		Str255			str;
-		long double		fps;
+		long			fps10;
 		
 		tc = TickCount();
 		
@@ -1040,15 +1039,16 @@ void I_FinishUpdate (void)
 		if (blitIndex >= 64)
 			blitIndex = 0;
 		
+		// 64 frames over diff 60 Hz ticks, in tenths of a frame per second.
 		if (diff == 0)
-			fps = 0.0;
+			fps10 = 0;
 		else
-			fps = (long double)(64L * 60L) / ((long double)diff);
+			fps10 = (64L * 60L * 10L) / diff;
 		
 		SetPort((GrafPtr)gOffPort);
 		SetGDevice(gOffDevice);
 	
-		sprintf((char *)str, "%3.1Lf", fps);
+		sprintf((char *)str, "%ld.%ld", fps10 / 10, fps10 % 10);
 		
 		if (gHiRes)
 			(void) M_DrawText (viewwindowx / 2 + 3, viewwindowy / 2 + 3, false, (char *)str);
@@ -1783,6 +1783,13 @@ void HandleMenu (short menuId, short menuItem)
 					D_PostEvent(&ev);
 					break;
 					
+				default :
+				{
+					extern Boolean MacBench_HandleMenu (short item);
+					(void) MacBench_HandleMenu (menuItem);
+					break;
+				}
+
 				case iControlPause : // Pause
 					if (gamekeydown[KEY_PAUSE])
 						ev.type = ev_keyup;
@@ -2251,7 +2258,11 @@ CallWNEAgain :
 					{
 						// ее Debugging hack to toggle frame rate counter.
 						if ((c == 'Q') || (c == 'q'))
+						{
+							extern void MacBench_SyncMenu (void);
 							gFrameRateOn = !gFrameRateOn;
+							MacBench_SyncMenu ();
+						}
 						
 						ev.type = ev_keydown;
 						ev.data1 = gScanCode[ (macEvent.message >> 8) & 0xFF ];

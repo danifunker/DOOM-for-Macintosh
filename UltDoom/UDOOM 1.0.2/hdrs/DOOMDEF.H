@@ -5,7 +5,7 @@
 #define __BIG_ENDIAN__			1
 #define __NO_USE_ASM			1			// Don't use assembly code routines
 #define __MAC_VERSION__
-#define __LION_SHOWFRAMERATE 	0
+#define __LION_SHOWFRAMERATE 	1		// Control menu / Q key toggles it
 
 #include <stdio.h>
 #include <string.h>

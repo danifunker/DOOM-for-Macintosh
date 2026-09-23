@@ -77,7 +77,8 @@ boolean         usergame = 0;               // ok to save / end game
 boolean         timingdemo = 0;             // if true, exit with report on completion
 boolean         nodrawers = 0;              // for comparative timing purposes
 boolean         noblit = 0;                 // for comparative timing purposes
-int             starttime = 0;          		// for comparative timing purposes  	
+int             starttime = 0;          		// for comparative timing purposes
+int             startgametic = 0;       		// gametic when starttime was taken  	
 
 boolean         viewactive = 0;
 
@@ -504,6 +505,7 @@ void G_DoLoadLevel (void)
 	P_SetupLevel (gameepisode, gamemap, 0, gameskill);   
 	displayplayer = consoleplayer;		// view the guy you are playing   
 	starttime = I_GetTime ();
+	startgametic = gametic;
 	gameaction = ga_nothing;
 #ifdef RANGECHECK
 	Z_CheckHeap ();
@@ -1885,8 +1887,15 @@ boolean G_CheckDemoStatus (void)
 	
 	if (timingdemo)
 	{
+		extern boolean MacBench_DemoDone (int tics, int realtics);
+
 		endtime = I_GetTime ();
-		I_Error ("timed %i gametics in %i realtics", gametic, endtime-starttime);
+		Z_ChangeTag (demobuffer, PU_CACHE);
+		demoplayback = false;
+		if (MacBench_DemoDone (gametic - startgametic, endtime - starttime))
+			return true;		// next benchmark demo queued
+		D_AdvanceDemo ();
+		return true;
 	}
 	
 	if (demoplayback)

@@ -3617,6 +3617,13 @@ void main (void)
 
 		ParamText("\p", "\p", "\p", "\p");		// Clear these handles. Probably a waste of time.
 		
+		{
+			extern void MacBench_ReadArgs (void);
+			extern void MacBench_InstallMenu (void);
+			MacBench_ReadArgs ();			// optional "DOOM Args" file
+			MacBench_InstallMenu ();		// Show Frame Rate / Run Benchmark
+		}
+		
 		D_DoomMain();
 	
 #if __profile__
