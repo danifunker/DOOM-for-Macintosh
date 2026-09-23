@@ -69,7 +69,8 @@ set(DOOM_SOURCES
     P_SWITCH.C P_TELEPT.C P_TICK.C P_USER.C
     R_BSP.C R_DATA.C R_DRAW.C R_MAIN.C R_PLANE.C R_SEGS.C R_THINGS.C
     SOUNDS.C ST_LIB.C ST_STUFF.C S_SOUND.C TABLES.C V_VIDEO.C WI_STUFF.C
-    W_WAD.C Z_ZONE.C)
+    W_WAD.C Z_ZONE.C
+    SerialNet.c NetDialogs.c)
 list(TRANSFORM DOOM_SOURCES PREPEND ${DOOM_ROOT}/src/)
 # gcc would otherwise compile the upper-case .C files as C++.
 set_source_files_properties(${DOOM_SOURCES} PROPERTIES

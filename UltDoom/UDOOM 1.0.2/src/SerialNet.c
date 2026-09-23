@@ -67,8 +67,8 @@ OSErr	SerInitializeNet()
 	SerShk		serShake;
 	int			i;
 	OSErr		status;
-	Str255		outString = "\p.AOut";
-	Str255		inString = "\p.AIn";
+	Str255		outString = "\005.AOut";
+	Str255		inString = "\004.AIn";
 	
 	if(gSerialPort == kPrinterPort)
 	{

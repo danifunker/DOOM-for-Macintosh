@@ -479,6 +479,13 @@ void GetPlayMode (void)
 			IPXSetup ();
 		break;
 
+		case kTCPNet:
+		{
+			extern void TCPNet_Connect (void);
+			TCPNet_Connect ();
+		}
+		break;
+
 	}
 	
 	ReleaseResource(GetResource('DLOG', rDialogGameOptions));

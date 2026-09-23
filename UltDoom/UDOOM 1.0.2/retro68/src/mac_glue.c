@@ -22,6 +22,16 @@ unsigned char *c2pstr(char *s)
     return (unsigned char *)s;
 }
 
+/* KillIO: Multiversal declares it but ships no glue. */
+OSErr Retro68KillIO(short refNum)
+{
+    ParamBlockRec pb;
+
+    memset(&pb, 0, sizeof(pb));
+    pb.ioParam.ioRefNum = refNum;
+    return PBKillIOSync(&pb);
+}
+
 OSErr HGetVol(StringPtr volName, short *vRefNum, long *dirID)
 {
     WDPBRec pb;

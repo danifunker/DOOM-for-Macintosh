@@ -23,6 +23,7 @@
  *
  *     -host N             host an N-player game (2-4)
  *     -join a.b.c.d[:port]  join the game hosted at that address
+ *     -serial modem|printer 2-player game over a null-modem cable
  *     -deathmatch / -altdeath / -nomonsters / -respawn
  *     -skill N            1-5
  *     -warp E M           episode and map (DOOM II: -warp 1 M)
@@ -61,6 +62,7 @@ static int      sFirstDemo = 1, sLastDemo = kBenchDemos;
 static Boolean  sAutoBench, sAutoQuit;
 static int      sNetHost;               /* -host N */
 static Boolean  sNetJoin;               /* -join addr */
+static int      sNetSerial;             /* -serial: 1 modem port, 2 printer port */
 
 static void StartDemo(int n)
 {
@@ -257,6 +259,8 @@ void MacBench_ReadArgs(void)
             ;
         else if (!strcmp(word, "-join") && fscanf(f, "%63s", gTCPHostAddr) == 1)
             sNetJoin = true;
+        else if (!strcmp(word, "-serial") && fscanf(f, "%31s", word) == 1)
+            sNetSerial = strcmp(word, "printer") ? 1 : 2;
         else if (!strcmp(word, "-deathmatch"))
             deathmatch = 1;
         else if (!strcmp(word, "-altdeath"))
@@ -293,10 +297,19 @@ Boolean MacBench_ApplyNetArgs(void)
     extern int     gPlayersWanted;
     extern NetType gNetType;
 
-    if (!sNetHost && !sNetJoin)
+    extern int     gSerialPort;
+
+    if (!sNetHost && !sNetJoin && !sNetSerial)
         return false;
     gPlayAlone = false;
     gPlayNetGame = true;
+    if (sNetSerial)
+    {   /* who is player 1 is settled by the serial handshake */
+        gNetType = kSerialNet;
+        gSerialPort = sNetSerial;
+        gPlayersWanted = 2;
+        return true;
+    }
     gNetType = kTCPNet;
     gKeyPlayer = sNetHost != 0;
     gPlayersWanted = sNetHost ? sNetHost : 2;

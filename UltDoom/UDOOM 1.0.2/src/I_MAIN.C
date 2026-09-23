@@ -2411,9 +2411,10 @@ static void TCPSetupDialog (DialogPtr dlg)
 		return;
 	if (CountMItems(m) < iConnectTCP)
 		AppendMenu(m, "\pTCP/IP");
-	// Only TCP/IP is built into this port so far.
-	for (i = iConnectAppleTalk; i < iConnectTCP; i++)
-		DisableItem(m, i);
+	// Transports not built into this port yet.
+	DisableItem(m, iConnectAppleTalk);
+	DisableItem(m, iConnectCTB);
+	DisableItem(m, iConnectIPX);
 
 	GetDItem(dlg, iMultiplayerConnect, &kind, &h, &r);
 	SetControlMaximum((ControlHandle)h, iConnectTCP);

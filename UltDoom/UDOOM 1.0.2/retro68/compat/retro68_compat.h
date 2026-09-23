@@ -125,6 +125,17 @@ pascal TimeValue GetMovieTime(Movie theMovie, TimeRecord *currentTime)
 /* ---- Comm Toolbox: networking is not built in this port, but the shared
    headers still name the connection handle type. ---- */
 typedef struct ConnRecord **ConnHandle;
+typedef long CMFlags;
+enum { cmNoErr = 0, cmRejected, cmFailed, cmTimeOut, cmNotOpen, cmNotClosed,
+       cmNoRequestPending, cmNotSupported, cmNoTools, cmUserCancel };
+
+/* ---- Device Manager / Serial Driver (Universal Interfaces spellings) ---- */
+typedef ProcPtr IOCompletionUPP;
+#define PBRead(pb, async)   ((async) ? PBReadAsync(pb) : PBReadSync(pb))
+#define PBWrite(pb, async)  ((async) ? PBWriteAsync(pb) : PBWriteSync(pb))
+#define KillIO(refNum)      Retro68KillIO(refNum)
+OSErr Retro68KillIO(short refNum);          /* mac_glue.c */
+#define fDTR null           /* Multiversal's SerShk calls the DTR flag "null" */
 extern ConnHandle gConn;
 OSErr CMIdle(ConnHandle hConn);
 OSErr CMClose(ConnHandle hConn, Boolean async, void *completor, long timeout, Boolean now);
