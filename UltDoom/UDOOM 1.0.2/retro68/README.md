@@ -17,7 +17,7 @@ to the application, or drop it on the application in the Finder.
 
 - 68040 or 68LC040, System 7.1 or later (tested on 7.5.5)
 - 32-bit addressing turned on (Memory control panel)
-- 8 MB of RAM or more; the application asks for 16 MB and runs in 6 MB
+- 32 MB of RAM recommended; the application asks for 24 MB and runs in 12 MB
 - 256 colours at 640×480 or larger
 - QuickTime 2.0 or later, for music (optional)
 

@@ -7,8 +7,9 @@ resource 'vers' (1) {
     "1.0.2 Retro68 build for 68040 / 68LC040"
 };
 
-/* 68K memory partition.  The zone allocator takes what it is given, and a
-   bigger zone keeps more WAD lumps cached: 16 MB preferred, 6 MB minimum. */
+/* 68K memory partition, sized for a 32 MB Quadra.  The zone allocator takes
+   what it is given (up to 24 MB), and a bigger zone keeps more WAD lumps
+   cached: 24 MB preferred, 12 MB minimum. */
 resource 'SIZE' (-1) {
     reserved,
     acceptSuspendResumeEvents,
@@ -26,6 +27,6 @@ resource 'SIZE' (-1) {
     reserved,
     reserved,
     reserved,
-    16 * 1024 * 1024,
-    6 * 1024 * 1024
+    24 * 1024 * 1024,
+    12 * 1024 * 1024
 };

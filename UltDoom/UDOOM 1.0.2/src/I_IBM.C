@@ -2846,15 +2846,25 @@ byte *I_ZoneBase (int *size)
 	heap = FreeMem();
 	heap -= (kMusicAmount + kWADBuffer + kOffscreenSize + kFreeAmount);
 	
-	if (heap > 0x800000L)
-		heap = 0x800000L;
+	// Retro68: WAD directories, texture tables and the C library's malloc
+	// live in the application heap outside the zone.  Leave them an eighth
+	// of the partition (at least 1.5 MB), and give the zone the rest, up to
+	// 24 MB: large PWADs from the late 90s cache far more lumps.
+	{
+		int	reserve = heap / 8;
+		if (reserve < 0x180000L)
+			reserve = 0x180000L;
+		heap -= reserve;
+	}
+	if (heap > 0x1800000L)
+		heap = 0x1800000L;
 	
 	ptr = (void *) NewPtrClear(heap);
 	
 	if ((heap < 0x180000L) || (ptr == NULL))
 	{
 		DisposePtr(ptr);
-		I_Error("Insufficient memory to run Doom! You should have about 4MB free for Doom to run.");
+		I_Error("Insufficient memory to run Doom! Give Ultimate DOOM at least 12 MB in its Get Info window.");
 	}
 	
 	if (size != NULL)
