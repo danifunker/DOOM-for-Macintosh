@@ -93,6 +93,7 @@ char				*pagename = NULL;
 boolean				shareware = 0;			// true if only episode 1 present
 boolean				registered = 0;			// true if complete version
 boolean				commercial = 0;			// true if DOOM II: Hell On Earth
+gamemission_t		gamemission = mission_doom;	// DOOM, DOOM II, TNT or Plutonia
 
 boolean				devparm = 0;			// started game with -devparm
 extern boolean		nomonsters;			// checkparm of -nomonsters
@@ -840,6 +841,37 @@ void mprintf(char *string)
 =============
 */
 
+/*
+=============
+=
+= D_SetGameMission
+=
+= Final DOOM's two IWADs run as DOOM II but have their own level names,
+= story texts and (for demo sync) the Final DOOM executable's teleporter.
+=
+=============
+*/
+
+void D_SetGameMission (void)
+{
+	char	name[64];
+	int		n = gWadFiles[0].name[0];
+
+	if (n > 63)
+		n = 63;
+	memcpy(name, &gWadFiles[0].name[1], n);
+	name[n] = 0;
+
+	if (!commercial)
+		gamemission = mission_doom;
+	else if (!strcasecmp(name, "TNT.WAD"))
+		gamemission = mission_tnt;
+	else if (!strcasecmp(name, "PLUTONIA.WAD"))
+		gamemission = mission_plut;
+	else
+		gamemission = mission_doom2;
+}
+
 void IdentifyVersion (void)
 {
 /*
@@ -1061,6 +1093,7 @@ void D_DoomMain (void)
 		
 	FindResponseFile ();
 	IdentifyVersion ();
+	D_SetGameMission ();
 	
 	StatusDialog(80, 12);
 	

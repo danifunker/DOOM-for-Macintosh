@@ -15,7 +15,8 @@
 #define HU_MSGTIMEOUT	(4*TICRATE)
 
 #define HU_TITLE	(mapnames[(gameepisode-1)*9+gamemap-1])
-#define HU_TITLE2	(mapnames2[gamemap-1])
+#define HU_TITLE2	((gamemission == mission_plut ? mapnamesp : \
+				  gamemission == mission_tnt ? mapnamest : mapnames2)[gamemap-1])
 #define HU_TITLEHEIGHT	1
 #define HU_TITLEX	0
 #define HU_TITLEY	(167 - SHORT(hu_font[0]->height))

@@ -26,6 +26,20 @@ char	*c4text = C4TEXT;
 char	*c5text = C5TEXT;
 char	*c6text = C6TEXT;
 
+char	*p1text = P1TEXT;
+char	*p2text = P2TEXT;
+char	*p3text = P3TEXT;
+char	*p4text = P4TEXT;
+char	*p5text = P5TEXT;
+char	*p6text = P6TEXT;
+
+char	*t1text = T1TEXT;
+char	*t2text = T2TEXT;
+char	*t3text = T3TEXT;
+char	*t4text = T4TEXT;
+char	*t5text = T5TEXT;
+char	*t6text = T6TEXT;
+
 char	*finaletext = NULL;
 char	*finaleflat = NULL;
 
@@ -55,27 +69,33 @@ void F_StartFinale (void)
 		{
 		case 6:
 			finaleflat = "SLIME16"; 
-			finaletext = c1text;
+			finaletext = gamemission == mission_plut ? p1text :
+				gamemission == mission_tnt ? t1text : c1text;
 			break;
 		case 11:
 			finaleflat = "RROCK14"; 
-			finaletext = c2text;
+			finaletext = gamemission == mission_plut ? p2text :
+				gamemission == mission_tnt ? t2text : c2text;
 			break;
 		case 20:
 			finaleflat = "RROCK07"; 
-			finaletext = c3text;
+			finaletext = gamemission == mission_plut ? p3text :
+				gamemission == mission_tnt ? t3text : c3text;
 			break;
 		case 30:
 			finaleflat = "RROCK17"; 
-			finaletext = c4text;
+			finaletext = gamemission == mission_plut ? p4text :
+				gamemission == mission_tnt ? t4text : c4text;
 			break;
 		case 15:
 			finaleflat = "RROCK13"; 
-			finaletext = c5text;
+			finaletext = gamemission == mission_plut ? p5text :
+				gamemission == mission_tnt ? t5text : c5text;
 			break;
 		case 31:
 			finaleflat = "RROCK19"; 
-			finaletext = c6text;
+			finaletext = gamemission == mission_plut ? p6text :
+				gamemission == mission_tnt ? t6text : c6text;
 			break;
 		}
 		S_ChangeMusic(mus_read_m, true);

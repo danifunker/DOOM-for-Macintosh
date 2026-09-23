@@ -51,7 +51,10 @@ int	EV_Teleport( line_t *line,int side,mobj_t *thing )
 				if (!P_TeleportMove (thing, m->x, m->y))
 					return 0;
 
-				thing->z = thing->floorz;
+				// The Final DOOM executable left z alone (TNT and Plutonia
+				// demos depend on it).
+				if (gamemission != mission_tnt && gamemission != mission_plut)
+					thing->z = thing->floorz;
 				if (thing->player)
 					thing->player->viewz = thing->z+thing->player->viewheight;
 				

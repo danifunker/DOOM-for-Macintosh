@@ -577,6 +577,11 @@ extern	boolean		shareware;			// true if episode 1 only
 extern	boolean		registered;			// true if complete version
 extern	boolean		commercial;			// true if DOOM II: Hell On Earth
 
+// Which game's texts and rules: set from the base WAD's name (D_SetGameMission).
+typedef enum { mission_doom, mission_doom2, mission_tnt, mission_plut } gamemission_t;
+extern	gamemission_t	gamemission;
+void D_SetGameMission (void);
+
 extern	boolean		deathmatch;			// only if started as net death
 extern	boolean		netgame;			// only true if >1 player
 extern	boolean		playeringame[MAXPLAYERS];

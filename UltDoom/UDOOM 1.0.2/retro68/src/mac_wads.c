@@ -257,6 +257,7 @@ static void Reload(void)
         S_sfx[i].usefulness = -1;           /* -1: not cached (as S_Init sets it) */
     }
     UpdateBaseWad((char *)gWadFiles[0].name);   /* sets shareware/registered/commercial */
+    D_SetGameMission();
 
     W_InitMultipleFiles();
     StatusDialog(80, 20);
