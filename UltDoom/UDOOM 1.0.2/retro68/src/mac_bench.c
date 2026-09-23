@@ -18,6 +18,14 @@
  *     -timedemo demoN     time a single demo at startup
  *     -fps                start with the frame-rate counter on
  *     -quit               quit when the benchmark finishes (no alert)
+ *
+ * and, to start a TCP/IP network game without the dialogs:
+ *
+ *     -host N             host an N-player game (2-4)
+ *     -join a.b.c.d[:port]  join the game hosted at that address
+ *     -deathmatch / -altdeath / -nomonsters / -respawn
+ *     -skill N            1-5
+ *     -warp E M           episode and map (DOOM II: -warp 1 M)
  */
 #include "LionDoom.h"
 #include "doomdef.h"
@@ -41,6 +49,7 @@ extern boolean  noblit;
 extern char    *defdemoname;
 extern gameaction_t gameaction;
 extern boolean  advancedemo;
+extern char     gTCPHostAddr[64];
 
 static short    sFrameRateItem;
 static short    sBenchItem;
@@ -50,6 +59,8 @@ static int      sRealTics[kBenchDemos + 1];
 static char     sDemoName[8];
 static int      sFirstDemo = 1, sLastDemo = kBenchDemos;
 static Boolean  sAutoBench, sAutoQuit;
+static int      sNetHost;               /* -host N */
+static Boolean  sNetJoin;               /* -join addr */
 
 static void StartDemo(int n)
 {
@@ -242,6 +253,23 @@ void MacBench_ReadArgs(void)
             sFirstDemo = 1;
             sLastDemo = kBenchDemos;
         }
+        else if (!strcmp(word, "-host") && fscanf(f, "%d", &sNetHost) == 1)
+            ;
+        else if (!strcmp(word, "-join") && fscanf(f, "%63s", gTCPHostAddr) == 1)
+            sNetJoin = true;
+        else if (!strcmp(word, "-deathmatch"))
+            deathmatch = 1;
+        else if (!strcmp(word, "-altdeath"))
+            deathmatch = 2;
+        else if (!strcmp(word, "-nomonsters"))
+            nomonsters = 1;
+        else if (!strcmp(word, "-respawn"))
+            respawnparm = 1;
+        else if (!strcmp(word, "-skill") && fscanf(f, "%d", &startskill) == 1)
+            startskill--;                       /* 1-5 on the command line */
+        else if (!strcmp(word, "-warp") &&
+                 fscanf(f, "%d %d", &startepisode, &startmap) == 2)
+            autostart = true;
         else if (!strcmp(word, "-timedemo") && fscanf(f, "%31s", word) == 1)
         {
             int n = 0;
@@ -253,6 +281,26 @@ void MacBench_ReadArgs(void)
         }
     }
     fclose(f);
+}
+
+/*
+ * If "DOOM Args" asked for a network game, set it up the way the multiplayer
+ * dialog would and return true so the start-up dialogs are skipped.
+ */
+Boolean MacBench_ApplyNetArgs(void)
+{
+    extern Boolean gPlayAlone, gPlayNetGame, gKeyPlayer;
+    extern int     gPlayersWanted;
+    extern NetType gNetType;
+
+    if (!sNetHost && !sNetJoin)
+        return false;
+    gPlayAlone = false;
+    gPlayNetGame = true;
+    gNetType = kTCPNet;
+    gKeyPlayer = sNetHost != 0;
+    gPlayersWanted = sNetHost ? sNetHost : 2;
+    return true;
 }
 
 /* Called once as the main loop starts. */

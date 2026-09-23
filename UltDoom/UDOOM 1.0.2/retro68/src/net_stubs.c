@@ -3,8 +3,8 @@
  *
  * The original game offered AppleTalk, serial, Comm Toolbox and IPX
  * multiplayer.  Those modules depend on AppleTalk / CTB / MacIPX interfaces
- * that Retro68's Multiversal headers do not provide, so this port builds
- * single-player only: gNetType stays kNoNet and none of these are reached.
+ * that Retro68's Multiversal headers do not provide, so they are stubbed;
+ * the multiplayer dialog only offers TCP/IP (tcpnet.c).
  */
 #include "LionDoom.h"
 #include "doomdef.h"
@@ -18,7 +18,30 @@ OSErr CMIdle(ConnHandle hConn) { return noErr; }
 OSErr CMClose(ConnHandle hConn, Boolean async, void *completor, long timeout,
               Boolean now) { return noErr; }
 
-void    GetPlayMode(void)                                 { gNetType = kNoNet; }
+void StatusParamText(char *one, char *two, char *three, char *four);
+void StatusDialog(long total, long current);
+void DrawStatusDialog(Boolean forUpdate);
+void SpinCursor(void);
+void TCPNet_Connect(void);
+
+/* NetDialogs.c's GetPlayMode, reduced to the transports this port builds. */
+void GetPlayMode(void)
+{
+    I_InitNetwork();                /* sets up doomcom and netgame */
+    StatusParamText("\pStarting DOOM...", "\p", "\p", "\p");
+    StatusDialog(80, 1);
+    DrawStatusDialog(TRUE);
+    SpinCursor();
+
+    switch (gNetType)
+    {
+        case kTCPNet:
+            TCPNet_Connect();
+            break;
+        default:
+            I_Error("That network type is not available in this version.");
+    }
+}
 
 /* AppleTalk */
 OSErr   TerminateNet(void)                                { return noErr; }

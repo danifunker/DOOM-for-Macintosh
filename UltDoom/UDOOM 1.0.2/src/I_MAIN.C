@@ -2162,7 +2162,8 @@ enum
 	iConnectSerialModem,
 	iConnectSerialPrinter,
 	iConnectCTB,
-	iConnectIPX
+	iConnectIPX,
+	iConnectTCP				// appended to MENU 550 at run time
 };
 
 // Multiplayer dialog items
@@ -2329,6 +2330,100 @@ pascal Boolean MultiplayerOptionsDialogFilter (DialogPtr dlg, EventRecord *evt, 
 }
 
 /********************************************************
+ *	TCP/IP items in the multiplayer dialog.							*
+ *																											*
+ *	TCP/IP reuses the "Initiate Connection" checkbox as		*
+ *	"Host this game" and the IPX socket field as the			*
+ *	address: our own address when hosting, the host's		*
+ *	when joining.																				*
+ ********************************************************/
+
+extern char		gTCPHostAddr[64];
+void			TCPNet_LocalAddress (char *out);
+static Str255	sTCPJoinText;			// what the user typed as the host address
+
+static void MoveDItem (DialogPtr dlg, short item, short l, short t, short r, short b)
+{
+	short	kind;
+	Handle	h;
+	Rect	rect;
+
+	GetDItem(dlg, item, &kind, &h, &rect);
+	SetRect(&rect, l, t, r, b);
+	SetDItem(dlg, item, kind, h, &rect);
+}
+
+static void TCPShowItems (DialogPtr dlg)
+{
+	short	kind;
+	Handle	h;
+	Rect	r;
+	char	ip[20];
+	Str255	s;
+
+	ShowDItem(dlg, iMultiplayerInitiate);
+	ShowDItem(dlg, iMultiplayerSocketLabel);
+	ShowDItem(dlg, iMultiplayerSocket);
+	MoveDItem(dlg, iMultiplayerInitiate, 99, 67, 225, 86);
+	MoveDItem(dlg, iMultiplayerSocketLabel, 232, 68, 290, 86);
+	MoveDItem(dlg, iMultiplayerSocket, 294, 68, 420, 84);
+
+	GetDItem(dlg, iMultiplayerInitiate, &kind, &h, &r);
+	SetControlTitle((ControlHandle)h, "\pHost this game");
+	SetControlValue((ControlHandle)h, gKeyPlayer ? 1 : 0);
+
+	if (gKeyPlayer)
+	{
+		ShowDItem(dlg, iMultiplayerPlayersLabel);
+		ShowDItem(dlg, iMultiplayerPlayers);
+		GetDItem(dlg, iMultiplayerSocketLabel, &kind, &h, &r);
+		SetIText(h, "\pYour IP:");
+		TCPNet_LocalAddress(ip);
+		strcpy((char *)s, ip[0] ? ip : "no TCP/IP!");
+		c2pstr((char *)s);
+		GetDItem(dlg, iMultiplayerSocket, &kind, &h, &r);
+		SetIText(h, s);
+		SelIText(dlg, iMultiplayerPlayers, 0, 32767);
+	}
+	else
+	{
+		HideDItem(dlg, iMultiplayerPlayersLabel);
+		HideDItem(dlg, iMultiplayerPlayers);
+		GetDItem(dlg, iMultiplayerSocketLabel, &kind, &h, &r);
+		SetIText(h, "\pHost IP:");
+		GetDItem(dlg, iMultiplayerSocket, &kind, &h, &r);
+		SetIText(h, sTCPJoinText);
+		SelIText(dlg, iMultiplayerSocket, 0, 32767);
+	}
+
+	SetRect(&r, 20, 60, 430, 92);
+	InvalRect(&r);
+}
+
+static void TCPSetupDialog (DialogPtr dlg)
+{
+	MenuHandle	m = GetMHandle(550);
+	short		kind, i;
+	Handle		h;
+	Rect		r;
+
+	if (m == NULL)
+		return;
+	if (CountMItems(m) < iConnectTCP)
+		AppendMenu(m, "\pTCP/IP");
+	// Only TCP/IP is built into this port so far.
+	for (i = iConnectAppleTalk; i < iConnectTCP; i++)
+		DisableItem(m, i);
+
+	GetDItem(dlg, iMultiplayerConnect, &kind, &h, &r);
+	SetControlMaximum((ControlHandle)h, iConnectTCP);
+	SetControlValue((ControlHandle)h, iConnectTCP);
+
+	gKeyPlayer = true;
+	TCPShowItems(dlg);
+}
+
+/********************************************************
  *	MultiplayerOptionsDialog.														*
  *																											*
  *	The options dialog.																	*
@@ -2455,6 +2550,8 @@ short MultiplayerOptionsDialog (void)
 	HideDItem(dlg, iMultiplayerInitiate);
 	gKeyPlayer = false;
 	
+	TCPSetupDialog(dlg);			// TCP/IP is the default connection
+	
 	GetPort(&oldPort);
 	SelectWindow(dlg);
 	SetPort(dlg);
@@ -2548,9 +2645,29 @@ short MultiplayerOptionsDialog (void)
 					deathmatch = 1;
 
 				
-				// If ipx, get socket
+				// If TCP/IP and joining, get the host address
 				GetDItem(dlg, iMultiplayerConnect, &kind, &h, &r);
-				if (GetCtlValue((ControlHandle)h) == iConnectIPX)
+				if (GetCtlValue((ControlHandle)h) == iConnectTCP && !gKeyPlayer)
+				{
+					extern Boolean TCPNet_ParseAddr (const char *s, unsigned long *ip,
+													 unsigned short *port);
+					unsigned long	ip;
+					unsigned short	port;
+
+					GetDItem(dlg, iMultiplayerSocket, &kind, &h, &r);
+					GetIText(h, textstr);
+					p2cstr(textstr);
+					strncpy(gTCPHostAddr, (char *)textstr, sizeof gTCPHostAddr - 1);
+					if (!TCPNet_ParseAddr(gTCPHostAddr, &ip, &port))
+					{
+						done = false;
+						SysBeep(1);
+						SelIText(dlg, iMultiplayerSocket, 0, 32767);
+						GetDItem(dlg, iMultiplayerOK, &kind, &h, &r);
+						HiliteControl((ControlHandle)h, 0);
+					}
+				}
+				else if (GetCtlValue((ControlHandle)h) == iConnectIPX)
 				{
 					if (noIPX)
 					{
@@ -2580,7 +2697,8 @@ short MultiplayerOptionsDialog (void)
 				GetDItem(dlg, iMultiplayerPlayers, &kind, &h, &r);
 				GetIText(h, textstr);
 				StringToNum(textstr, &gPlayersWanted);
-				if ((gPlayersWanted < 2) || (gPlayersWanted > 4))
+				if (((gPlayersWanted < 2) || (gPlayersWanted > 4)) &&
+					!(gNetType == kTCPNet && !gKeyPlayer))
 				{
 					done = false;
 					SelIText(dlg, iMultiplayerPlayers, 0, 100);
@@ -2609,6 +2727,9 @@ short MultiplayerOptionsDialog (void)
 						break;
 					case iConnectIPX:
 						gNetType = kIPXNet;
+						break;
+					case iConnectTCP:
+						gNetType = kTCPNet;
 						break;
 				}
 				
@@ -2718,6 +2839,16 @@ short MultiplayerOptionsDialog (void)
 					gKeyPlayer = true;
 					SetControlValue((ControlHandle)h, 1);
 				}	
+				GetDItem(dlg, iMultiplayerConnect, &kind, &h, &r);
+				if (GetCtlValue((ControlHandle)h) == iConnectTCP)
+				{
+					if (gKeyPlayer)
+					{	// switching to host: keep what was typed as the join address
+						GetDItem(dlg, iMultiplayerSocket, &kind, &h, &r);
+						GetIText(h, sTCPJoinText);
+					}
+					TCPShowItems(dlg);
+				}
 				break;
 
 			case iMultiplayerConnect:
@@ -2758,6 +2889,9 @@ short MultiplayerOptionsDialog (void)
 						HideDItem(dlg, iMultiplayerInitiate);
 					}
 					
+					if (itm == iConnectTCP)
+						TCPShowItems(dlg);
+
 					if (itm == iConnectSerialModem)
 					{
 						gSerialPort = 1;
@@ -3572,7 +3706,13 @@ void main (void)
 		}
 	}
 
-	InitialDialog();
+	{
+		extern void		MacBench_ReadArgs (void);
+		extern Boolean	MacBench_ApplyNetArgs (void);
+		MacBench_ReadArgs ();			// optional "DOOM Args" file
+		if (!MacBench_ApplyNetArgs ())	// -host / -join skip the dialogs
+			InitialDialog();
+	}
 
 	if (gPlayAlone)
 	{
@@ -3618,9 +3758,7 @@ void main (void)
 		ParamText("\p", "\p", "\p", "\p");		// Clear these handles. Probably a waste of time.
 		
 		{
-			extern void MacBench_ReadArgs (void);
 			extern void MacBench_InstallMenu (void);
-			MacBench_ReadArgs ();			// optional "DOOM Args" file
 			MacBench_InstallMenu ();		// Show Frame Rate / Run Benchmark
 		}
 		

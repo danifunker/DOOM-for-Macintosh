@@ -1308,7 +1308,8 @@ typedef enum
 	kAppleTalkNet,
 	kSerialNet,
 	kCTBNet,
-	kIPXNet
+	kIPXNet,
+	kTCPNet				// UDP over MacTCP / Open Transport (Retro68 build)
 } NetType;
 
 extern FILE *ctbfile;

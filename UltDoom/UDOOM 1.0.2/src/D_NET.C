@@ -64,6 +64,11 @@ a gametic cannot be run until nettics[] > gametic for all players
 
 
 #include "D_NET.PROTO.H"
+
+// TCP/IP transport (retro68/src/tcpnet.c)
+void	TCPNet_Send (int node, Ptr data, long length);
+Boolean	TCPNet_Receive (Ptr data, long *length, short *remoteNode);
+void	TCPNet_Terminate (void);
 ticcmd_t		localcmds[BACKUPTICS];
 
 ticcmd_t        netcmds[MAXPLAYERS][BACKUPTICS];
@@ -342,6 +347,9 @@ void HSendPacket (int node, int flags)
 		case kIPXNet:
 			SendPacket(node);
 		break;
+		case kTCPNet:
+			TCPNet_Send(node, (Ptr) netbuffer, doomcom->datalength);
+		break;
 	}
 	
 }
@@ -399,6 +407,10 @@ boolean HGetPacket (void)
 		break;
 		case kIPXNet:
 			gotPacket = GetPacket(&size);
+		break;
+		case kTCPNet:
+			gotPacket = TCPNet_Receive((Ptr) netbuffer, &size, &remoteNode);
+			doomcom->remotenode = remoteNode;
 		break;
 	}
 
@@ -759,6 +771,7 @@ void D_ArbitrateNetStart (void)
 	boolean	gotinfo[MAXNETNODES];
 	short 	waitAgain = kYesButton;
 	long	netWait;
+	long	lastSetup = 0;
 
 	autostart 			= true;
 	
@@ -916,6 +929,27 @@ DrawStatusDialog(TRUE);
 				}
 			}
 
+			if (gNetType == kTCPNet && TickCount() - lastSetup > 35)
+			{
+				lastSetup = TickCount();
+				// UDP may have dropped the setup packet: send it again to
+				// every node that hasn't been heard from yet.
+				for (i = 1 ; i<doomcom->numnodes ; i++)
+					if (!gotinfo[i])
+					{
+						netbuffer->retransmitfrom = startskill;
+						if (deathmatch)
+							netbuffer->retransmitfrom |= (deathmatch<<6);
+						if (nomonsters)
+							netbuffer->retransmitfrom |= 0x20;
+						if (respawnparm)
+							netbuffer->retransmitfrom |= 0x10;
+						netbuffer->starttic = startepisode * 64 + startmap;
+						netbuffer->player = VERSION;
+						netbuffer->numtics = 0;
+						HSendPacket (i, NCMD_SETUP);
+					}
+			}
 #if 1
  			for(i = 10 ; i  &&  HGetPacket(); --i)
  			{
@@ -1020,6 +1054,10 @@ void D_QuitNetGame (void)
 	usergame = false;
 	
 // send a bunch of packets for security
+	// (netbuffer is only set up once D_CheckNetGame has run; an error during
+	// connection setup gets here without it, and must still close the network)
+	if (netbuffer)
+	{
 	netbuffer->player = consoleplayer;
 	netbuffer->numtics = 0;
 	for (i = 0; i < 2; i++)
@@ -1034,7 +1072,7 @@ void D_QuitNetGame (void)
 		// I_WaitVBL (1);
 		Delay(2, &tempL);
 	}
-	
+	}
 	
 	switch (gNetType)
 	{
@@ -1050,6 +1088,9 @@ void D_QuitNetGame (void)
 		break;
 		case kIPXNet:
 			IPXTerminateNet ();
+		break;
+		case kTCPNet:
+			TCPNet_Terminate ();
 		break;
 	}
 
