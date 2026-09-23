@@ -15,6 +15,25 @@ set(DOOM_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 set(DOOM_CPU "68040" CACHE STRING "Target CPU passed to -m (68020, 68030, 68040)")
 set(DOOM_OPT "-O2" CACHE STRING "Optimisation flags")
 option(DOOM_SINGLE_SEGMENT "Link as one CODE segment (no jump-table calls)" OFF)
+set(DOOM_VERSION "1.0.2r68" CACHE STRING "Version for the 'vers' resource (tools/release.sh sets it)")
+
+# 'vers' numbers: "1.3.x" -> major 0x01, minor 0x30 (BCD, as the Finder shows it)
+string(REGEX MATCH "^([0-9]+)\\.?([0-9]?)\\.?([0-9]?)" _v "${DOOM_VERSION}")
+set(_maj "${CMAKE_MATCH_1}")
+set(_min "${CMAKE_MATCH_2}")
+set(_bug "${CMAKE_MATCH_3}")
+if(NOT _maj)
+    set(_maj 1)
+endif()
+if(NOT _min)
+    set(_min 0)
+endif()
+if(NOT _bug)
+    set(_bug 0)
+endif()
+set(DOOM_VERS_MAJOR "0x${_maj}")
+set(DOOM_VERS_MINOR "0x${_min}${_bug}")
+configure_file(rsrc/UltimateDOOM.r.in ${CMAKE_CURRENT_BINARY_DIR}/UltimateDOOM.r @ONLY)
 
 # ---------------------------------------------------------------------------
 # The sources include headers with inconsistent case ("doomdef.h" vs
@@ -91,7 +110,7 @@ add_application(UltimateDOOM
     src/Draw68K.s
     src/Blit68K.s
     rsrc/DoomShell.rsrc.bin
-    rsrc/UltimateDOOM.r
+    ${CMAKE_CURRENT_BINARY_DIR}/UltimateDOOM.r
     CREATOR idSW
     TYPE APPL)
 
@@ -106,6 +125,7 @@ target_compile_options(UltimateDOOM PRIVATE
     -ffunction-sections
     -fno-strict-aliasing
     -fcommon
+    $<$<COMPILE_LANGUAGE:C>:-std=gnu17>
     $<$<COMPILE_LANGUAGE:C>:-include ${CMAKE_CURRENT_SOURCE_DIR}/compat/retro68_compat.h>
     -Wno-multichar -Wno-int-conversion -Wno-incompatible-pointer-types -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-implicit-int -Wno-return-type -Wno-overflow -Wno-attributes -Wno-builtin-declaration-mismatch -Wno-discarded-qualifiers -Wno-endif-labels -Wno-comment
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>)

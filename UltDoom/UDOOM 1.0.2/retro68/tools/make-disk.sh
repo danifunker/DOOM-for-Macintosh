@@ -4,6 +4,7 @@
 #   tools/make-disk.sh [-o DOOM.hda] [-s 48M] [-w path/to/WAD ...] [-m path/to/MIDI/FOLDER ...]
 #                      [--no-shareware] [--no-music]
 #   DOOM_ARGS="-bench -quit" tools/make-disk.sh      # also write a "DOOM Args" file
+#   BUILD_DIR=build-release tools/make-disk.sh      # app from another build tree
 #
 # The disk (volume "DOOM") holds the application, the music and a WAD.
 # Music lives in MIDI/<WAD name>/ (MIDI/DOOM1 for the shareware tracks);
@@ -19,8 +20,9 @@ set -euo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
 repo=$(cd "$here/../../.." && pwd)
-app="$here/build/UltimateDOOM.bin"
-out="$here/build/DOOM.hda"
+build="$here/${BUILD_DIR:-build}"
+app="$build/UltimateDOOM.bin"
+out="$build/DOOM.hda"
 size=48M
 wads=()
 midis=()
@@ -51,7 +53,12 @@ rb archive extract --format macbinary "$repo/DOOM SW 1.0.2/DOOM.sea" "$work/sw"
 sw="$work/sw/DOOM"
 
 flat="$work/doom.hfs"
-rb new --fs hfs --size "$size" --name DOOM "$flat"
+# rb-cli releases since 2026-09 group "new" by media class
+if rb new --help 2>&1 | grep -q -- '--fs'; then
+    rb new --fs hfs --size "$size" --name DOOM "$flat"
+else
+    rb new volume hfs "$flat" --size "$size" --name DOOM
+fi
 
 python3 "$here/tools/mbrename.py" "$app" "$work/app.bin" "Ultimate DOOM"
 rb put-macbinary "$flat" "$work/app.bin"

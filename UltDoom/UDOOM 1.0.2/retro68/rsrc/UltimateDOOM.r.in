@@ -1,10 +1,11 @@
 #include "Processes.r"
 #include "MacTypes.r"
 
+/* Filled in by CMake (DOOM_VERSION) */
 resource 'vers' (1) {
-    0x01, 0x02, release, 0x00, verUS,
-    "1.0.2r68",
-    "1.0.2 Retro68 build for 68040 / 68LC040"
+    @DOOM_VERS_MAJOR@, @DOOM_VERS_MINOR@, release, 0x00, verUS,
+    "@DOOM_VERSION@",
+    "@DOOM_VERSION@ Retro68 build for 68040 / 68LC040"
 };
 
 /* 68K memory partition, sized for a 32 MB Quadra.  The zone allocator takes

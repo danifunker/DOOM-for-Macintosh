@@ -76,6 +76,35 @@ supply your own `DOOM.WAD` or `DOOM2.WAD`.
 
 If no WAD sits next to the application, it asks for one with a standard Open dialog.
 
+## Releases
+
+`tools/release.sh VERSION` builds a clean tree in `build-release/` (with
+`VERSION` in the application's `vers` resource) and puts the files to publish
+in `build-release/release/`: `UltimateDOOM-VERSION-68040.sit.hqx`, the two disk
+images zipped, and `SHA256SUMS`.  `RETRO68_TOOLCHAIN` points at the toolchain
+(default `~/repos/Retro68-build/toolchain`).
+
+GitHub Actions (`.github/workflows/retro68.yml`) runs the same script in the
+official `ghcr.io/autc04/retro68` image, with a pinned `rb-cli` release:
+
+- every push and pull request: the files are uploaded as a workflow artifact;
+- a tag `vX.Y.Z`: they are also published as the GitHub Release `vX.Y.Z`, with
+  `RELEASE_NOTES.md` as its text.
+
+```sh
+git tag v1.1.0 && git push danifunker v1.1.0
+```
+
+To reproduce the CI build locally:
+
+```sh
+docker run --rm -v "$PWD":/src -w "/src/UltDoom/UDOOM 1.0.2/retro68" \
+  ghcr.io/autc04/retro68:latest \
+  bash -c 'RETRO68_TOOLCHAIN=/Retro68-build/toolchain tools/release.sh 1.1.0'
+```
+
+(with `rb-cli` on the `PATH` inside the container, as the workflow installs it).
+
 ## Testing in QEMU
 
 ```sh

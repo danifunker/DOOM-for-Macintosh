@@ -1,0 +1,64 @@
+# Builds the Retro68 (68040 / 68LC040 classic Mac OS) port of Ultimate DOOM.
+#
+#   push / pull request   build, upload the release files as a workflow artifact
+#   tag v1.2.3            the same, then publish them as GitHub Release "v1.2.3"
+#
+# The toolchain is the official Retro68 image; disk images and archives are
+# made with rb-cli from rusty-backup (pinned below).
+name: Retro68 build
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  RB_CLI_RELEASE: v2026-09-12-11-44
+  PORT_DIR: UltDoom/UDOOM 1.0.2/retro68
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/autc04/retro68:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install rb-cli
+        run: |
+          ver=${RB_CLI_RELEASE#v}
+          curl -sSfL "https://github.com/danifunker/rusty-backup/releases/download/$RB_CLI_RELEASE/rb-cli-linux-musl-x64-$ver.tar.gz" \
+            | tar xz -C /usr/local/bin rb-cli
+          rb-cli --version
+
+      - name: Version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            v=${GITHUB_REF_NAME#v}
+          else
+            v=$(date -u +%Y%m%d)-$(echo "$GITHUB_SHA" | cut -c1-7)
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Build and package
+        run: |
+          cd "$PORT_DIR"
+          RETRO68_TOOLCHAIN=/Retro68-build/toolchain tools/release.sh "${{ steps.version.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UltimateDOOM-${{ steps.version.outputs.version }}
+          path: ${{ env.PORT_DIR }}/build-release/release/*
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Ultimate DOOM for 68040 Macs ${{ github.ref_name }}
+          body_path: ${{ env.PORT_DIR }}/RELEASE_NOTES.md
+          files: ${{ env.PORT_DIR }}/build-release/release/*
