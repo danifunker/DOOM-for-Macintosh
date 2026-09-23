@@ -160,6 +160,7 @@ extern void W_CloseWadFiles();
  Boolean							gFrameRateOn	= true;
 
  Boolean							gMenuHidden = 0;
+ Boolean							gMouseCaptured = 0;	// mouse mode, playing a level
  RgnHandle						gOldeGrayRgn = NULL;
  short								gOldeMBarHeight = 0;
  Boolean							gInForeground = TRUE;
@@ -1604,7 +1605,8 @@ void HandleMenu (short menuId, short menuItem)
 					SetItemMark(theMenu, 1, checkMark);
 					SetItemMark(theMenu, 2, noMark);
 					SetItemMark(theMenu, 3, noMark);
-					ShowCursor();
+					gMouseCaptured = false;		// I_StartTic decides from here
+					InitCursor();
 					break;
 					
 				case 2 :	// Mouse/Joystick
@@ -1613,11 +1615,10 @@ void HandleMenu (short menuId, short menuItem)
 						SetItemMark(theMenu, 1, noMark);
 						SetItemMark(theMenu, 2, checkMark);
 						SetItemMark(theMenu, 3, noMark);
-						if (!usejoystick)
-							HideCursor();
 						useMouse = 1;
 						usejoystick = 0;
-						I_ReinitMouse();
+						gMouseCaptured = false;	// captured again by I_StartTic
+						InitCursor();
 					}
 					break;
 					
@@ -1627,10 +1628,10 @@ void HandleMenu (short menuId, short menuItem)
 						SetItemMark(theMenu, 1, noMark);
 						SetItemMark(theMenu, 2, noMark);
 						SetItemMark(theMenu, 3, checkMark);
-						if (!useMouse)
-							HideCursor();
 						useMouse = 1;
 						usejoystick = 1;
+						gMouseCaptured = false;
+						InitCursor();
 					}
 					break;
 					
@@ -1922,15 +1923,11 @@ void CheckCursor( Point mouseLocation )
 	if (gInForeground == FALSE)
 		return;
 	
-	if (useMouse)
+	if (useMouse && gMouseCaptured)
 	{
 		if (!gMenuHidden)
-	{
-		HideMenuBar();
+			HideMenuBar();
 		return;
-	}
-		else
-			return;
 	}
 	
 	/*
@@ -2036,9 +2033,29 @@ void I_StartTic (void)
 	SetPort(gDoomWindow);
 	GetMouse(&mLoc);
 	
-	if (useMouse || usejoystick)
+	// Retro68: in mouse mode the pointer is only captured (hidden and
+	// re-centred every tic) while a level is being played.  DOOM's menu,
+	// pause, the title screen and demos let it go, so it can reach the
+	// menu bar and the Mac's menus.
+	{
+		Boolean	capture = (useMouse || usejoystick) && gInForeground &&
+			gamestate == GS_LEVEL && !menuactive && !paused && !demoplayback;
+
+		if (capture != gMouseCaptured)
+		{
+			gMouseCaptured = capture;
+			if (capture)
+			{
+				HideCursor();
+				I_ReinitMouse();
+			}
+			else if (useMouse || usejoystick)
+				InitCursor();
+		}
+	}
+	if (gMouseCaptured)
 		I_ReadMouse(&mLoc);
-	else if (gInForeground)
+	else if (gInForeground && !useMouse && !usejoystick)
 		ObscureCursor();
 	
 	mLoc.h -= (**gMainDevice).gdRect.left;

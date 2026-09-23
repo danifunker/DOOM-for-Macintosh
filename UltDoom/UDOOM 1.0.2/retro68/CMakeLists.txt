@@ -109,6 +109,7 @@ add_application(UltimateDOOM
     src/mus2mid.c
     src/Draw68K.s
     src/Blit68K.s
+    src/Fast68K.s
     rsrc/DoomShell.rsrc.bin
     ${CMAKE_CURRENT_BINARY_DIR}/UltimateDOOM.r
     CREATOR idSW

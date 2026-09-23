@@ -19,6 +19,8 @@
  *     -bench              run the demo1..demo3 benchmark at startup
  *     -timedemo demoN     time a single demo at startup
  *     -fps                start with the frame-rate counter on
+ *     -classic            Lion's original drawers (see the Benchmark menu)
+ *     -mouse              mouse control (as Options > Mouse)
  *     -quit               quit when the benchmark finishes (no alert)
  *
  * and, to start a TCP/IP network game without the dialogs:
@@ -61,7 +63,12 @@ extern boolean  advancedemo;
 extern char     gTCPHostAddr[64];
 
 #define kBenchMenuID    210
-enum { iBenchAll = 1, iBenchSep, iBenchDemo1 };
+enum { iBenchAll = 1, iBenchSep, iBenchDemo1, iBenchSep2 = iBenchDemo1 + 3, iBenchClassic };
+
+/* Lion's original assembly drawers instead of the 68040 ones (Fast68K.s),
+   for timing comparisons on real machines.  -classic in DOOM Args. */
+Boolean gClassicDrawers = false;
+extern boolean setsizeneeded;
 
 static short    sFrameRateItem;
 static MenuHandle sBenchMenu;
@@ -107,7 +114,7 @@ void MacBench_InstallMenu(void)
 
     /* Benchmark > hierarchical submenu */
     sBenchMenu = NewMenu(kBenchMenuID, "\pBenchmark");
-    AppendMenu(sBenchMenu, "\pAll Demos/B;(-;demo1;demo2;demo3");
+    AppendMenu(sBenchMenu, "\pAll Demos/B;(-;demo1;demo2;demo3;(-;Lion's Original Drawers");
     InsertMenu(sBenchMenu, -1);                 /* -1: hierarchical */
     AppendMenu(m, "\pBenchmark");
     item = CountMItems(m);
@@ -122,6 +129,8 @@ void MacBench_SyncMenu(void)
     if (sFrameRateItem)
         SetItemMark(GetMHandle(mControlMenu), sFrameRateItem,
                     gFrameRateOn ? checkMark : noMark);
+    if (sBenchMenu)
+        SetItemMark(sBenchMenu, iBenchClassic, gClassicDrawers ? checkMark : noMark);
     if (sBenchMenu)
     {
         if (netgame)
@@ -148,6 +157,13 @@ Boolean MacBench_HandleSubmenu(short menuID, short item)
 {
     if (menuID != kBenchMenuID)
         return false;
+    if (item == iBenchClassic)
+    {
+        gClassicDrawers = !gClassicDrawers;
+        setsizeneeded = true;               /* picks the drawers again */
+        MacBench_SyncMenu();
+        return true;
+    }
     if (sDemoIndex != 0 || netgame)
         return true;
     if (item == iBenchAll)
@@ -199,6 +215,7 @@ static void WriteLog(long totalFPS10)
     if (!f)
         return;
     fprintf(f, "%s", ctime(&now));
+    fprintf(f, "  drawers: %s\n", gClassicDrawers ? "Lion's originals" : "68040");
     fprintf(f, "  CPU %s, %s graphics, detailLevel %d, screenblocks %d\n",
             CPUName(), gLargeGraphics ? "large" : "small",
             detailLevel, screenblocks);
@@ -306,6 +323,14 @@ void MacBench_ReadArgs(void)
             MacWads_SetMusicLog(true);
         else if (!strcmp(word, "-fps"))
             sArgFPS = true;
+        else if (!strcmp(word, "-classic"))
+            gClassicDrawers = true;
+        else if (!strcmp(word, "-mouse"))
+        {   /* play with the mouse (Options menu: Mouse) */
+            extern int useMouse, usejoystick;
+            useMouse = 1;
+            usejoystick = 0;
+        }
         else if (!strcmp(word, "-quit"))
             sAutoQuit = true;
         else if (!strcmp(word, "-bench"))

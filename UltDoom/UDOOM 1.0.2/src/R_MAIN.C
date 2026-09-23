@@ -726,7 +726,13 @@ void R_ExecuteSetViewSize (void)
 		else
 			colfunc = basecolfunc = R_DrawColumn68KLowRes;
 		
-		spanfunc = R_DrawSpanAsm;
+		{	// Retro68: 68040 inner loops unless the Benchmark menu asks for
+			// Lion's originals (for timing comparisons on real machines)
+			extern Boolean	gClassicDrawers;
+			extern void		R_DrawSpan040 (void);
+
+			spanfunc = gClassicDrawers ? R_DrawSpanAsm : R_DrawSpan040;
+		}
 		fuzzcolfunc = R_DrawFuzzColumn;
 		transcolfunc = R_DrawTranslatedColumn;
 		
