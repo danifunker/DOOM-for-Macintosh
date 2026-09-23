@@ -1250,6 +1250,7 @@ void D_DoomMain (void)
 	DrawStatusDialog(TRUE);
 	W_InitMultipleFiles ();
 	DEH_Init ();					// DEHACKED lumps and .DEH / .BEX files
+	UMI_Init ();					// UMAPINFO
 	StatusDialog(80, 14);
 	
 	//

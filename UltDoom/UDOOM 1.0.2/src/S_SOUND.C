@@ -95,6 +95,33 @@ void S_StopMusic (void)
  *	a file name for a QuickTime movie.								*
  ******************************************************/
 
+// Music named by a lump rather than by the built-in table (UMAPINFO's
+// "music = D_E5M1"): it plays through this extra entry, number NUMMUSIC.
+static char			sCustomMusicName[9];
+static musicinfo_t	sCustomMusic = { sCustomMusicName, 0, NULL, 0 };
+
+void MacWads_LogMusicErr (const char *track, const char *what, long err);
+
+void S_ChangeMusicByName (const char *lump, int looping)
+{
+	const char	*track = lump;
+	int			i;
+
+	if (!strncasecmp(track, "D_", 2))
+		track += 2;
+	for (i = mus_None + 1; i < NUMMUSIC; i++)
+		if (S_music[i].name && !strcasecmp(S_music[i].name, track))
+		{
+			S_ChangeMusic(i, looping);
+			return;
+		}
+	if (gCurrSongPlaying == &sCustomMusic && strcasecmp(sCustomMusicName, track))
+		S_StopMusic();						// another custom track is playing
+	strncpy(sCustomMusicName, track, 8);
+	sCustomMusicName[8] = 0;
+	S_ChangeMusic(NUMMUSIC, looping);
+}
+
 void S_ChangeMusic (int musicnum, int looping)
 {
 	musicinfo_t		*music;
@@ -110,7 +137,9 @@ void S_ChangeMusic (int musicnum, int looping)
 	if (!gQuickTimeInstalled || !gQuickTimeLoaded)
 		return;
 	
-	if ((musicnum <= mus_None) || (musicnum >= NUMMUSIC))
+	if (musicnum == NUMMUSIC)
+		music = &sCustomMusic;				// S_ChangeMusicByName
+	else if ((musicnum <= mus_None) || (musicnum > NUMMUSIC))
 		I_Error("Bad music number %d", musicnum);
 	else
 		music = &S_music[musicnum];
@@ -154,7 +183,10 @@ void S_ChangeMusic (int musicnum, int looping)
 		err = OpenMovieFile(&myFSpec, &fRefNum, fsCurPerm);
 		
 		if (err != noErr)
+		{
+			MacWads_LogMusicErr(music->name, "no file to open", err);
 			return;
+		}
 		
 		gOnCD = TRUE;
 	}
@@ -169,6 +201,7 @@ void S_ChangeMusic (int musicnum, int looping)
 	
 	if (err != noErr)
 	{
+		MacWads_LogMusicErr(music->name, "QuickTime NewMovieFromFile failed", err);
 	DeallocateCloseAndReturn :
 		DisposeMovie(aMovie);
 		(void) CloseMovieFile(fRefNum);
@@ -179,7 +212,10 @@ void S_ChangeMusic (int musicnum, int looping)
 		GetMovieDuration(aMovie), 0);
 	
 	if (err != noErr)
+	{
+		MacWads_LogMusicErr(music->name, "QuickTime LoadMovieIntoRam failed", err);
 		goto DeallocateCloseAndReturn;
+	}
 	
 	err = CloseMovieFile(fRefNum);
 	
@@ -205,9 +241,13 @@ void S_ChangeMusic (int musicnum, int looping)
 	if (gMusicOff == FALSE)
 	{
 		StartMovie(aMovie);
-		if (GetMoviesError() != noErr)
+		if ((err = GetMoviesError()) != noErr)
+		{
+			MacWads_LogMusicErr(music->name, "QuickTime StartMovie failed", err);
 			goto DeallocateAndReturn;
+		}
 	}
+	MacWads_LogMusicErr(music->name, "playing", 0);
 	
 	SetMovieVolume(aMovie, (gSndMusicVolume + 1) * 2);
 	
@@ -719,7 +759,7 @@ void S_Start (void)
 	gMusicPaused = 0;
 	
 	if (commercial)
-  	mnum = mus_runnin + gamemap - 1;
+  	mnum = mus_runnin + (gamemap - 1) % 32;		// MAP33+ (add-ons) wrap
   else
   {
   	int spmus[]=
@@ -738,7 +778,7 @@ void S_Start (void)
 		if (gameepisode < 4)
 			mnum = mus_e1m1 + (gameepisode-1)*9 + gamemap-1;
 		else
-			mnum = spmus[gamemap-1];
+			mnum = spmus[(gamemap-1) % 9];
   }
 
 /*
@@ -747,6 +787,9 @@ void S_Start (void)
 		mnum = mus_e1m1 + ((gameepisode - 1) * 9) + (gamemap - 1);
 */
 
-	S_ChangeMusic(mnum, true);
+	if (gamemapinfo && gamemapinfo->music[0])
+		S_ChangeMusicByName(gamemapinfo->music, true);		// UMAPINFO
+	else
+		S_ChangeMusic(mnum, true);
 	nextcleanup = 15;
 }

@@ -240,6 +240,9 @@ menuitem_t EpisodeMenu[]=
 #endif
 };
  
+// UMAPINFO's episodes, when the WADs define any (M_NewGame)
+static menuitem_t	UmiEpisodeMenu[MAXUMIEPISODES];
+
 menu_t  EpiDef =
 {
 	ep_end,                         // # of menu items 
@@ -878,6 +881,34 @@ void M_NewGame(int choice)
 		return;
 	}
 	
+	// UMAPINFO episodes (No Rest for the Living, the Master Levels, SIGIL...)
+	// replace the game's own list
+	if (umi_episodesdefined && umi_numepisodes > 0)
+	{
+		int		i;
+
+		for (i = 0; i < umi_numepisodes; i++)
+		{
+			UmiEpisodeMenu[i].status = 1;
+			strncpy(UmiEpisodeMenu[i].name, umi_episodes[i].patch, 9);
+			UmiEpisodeMenu[i].name[9] = 0;
+			UmiEpisodeMenu[i].routine = M_Episode;
+			UmiEpisodeMenu[i].alphaKey = umi_episodes[i].key;
+		}
+		EpiDef.menuitems = UmiEpisodeMenu;
+		EpiDef.numitems = umi_numepisodes;
+		if (EpiDef.lastOn >= umi_numepisodes)
+			EpiDef.lastOn = 0;
+		NewDef.prevMenu = &EpiDef;
+		M_SetupNextMenu(&EpiDef);
+		return;
+	}
+	EpiDef.menuitems = EpisodeMenu;
+	EpiDef.numitems = ep_end;
+	if (EpiDef.lastOn >= ep_end)
+		EpiDef.lastOn = 0;
+	NewDef.prevMenu = commercial ? &MainDef : &EpiDef;
+
 	if (commercial)
 	{
 		NewDef.lastOn = startskill;
@@ -893,6 +924,7 @@ void M_NewGame(int choice)
 //
 //============================================= 
 int     epi;
+static int	epimap = 1;			// first map of the chosen episode (UMAPINFO)
  
 void M_DrawEpisode(void)
 {
@@ -904,7 +936,7 @@ void M_VerifyNightmare(int ch)
 	if (ch != 'y')
 		return;
 		
-	G_DeferedInitNew(nightmare,epi+1,1);
+	G_DeferedInitNew(nightmare,epi+1,epimap);
 	M_ClearMenus ();
 }
  
@@ -916,7 +948,7 @@ void M_ChooseSkill(int choice)
 		return;
 	}
 	
-	G_DeferedInitNew(choice,epi+1,1);
+	G_DeferedInitNew(choice,epi+1,epimap);
 	startskill = choice;
 	M_ClearMenus ();
 }
@@ -926,6 +958,18 @@ void M_Episode(int choice)
 	// Episodes the loaded WADs don't have (DOOM1.WAD has only the first;
 	// an add-on WAD may bring more).
 	char	lump[5];
+
+	if (EpiDef.menuitems == UmiEpisodeMenu)
+	{	// UMAPINFO episode: it starts at its own map
+		int		e = 1, m = 1;
+
+		UMI_ParseMapName(umi_episodes[choice].map, &e, &m);
+		epi = e - 1;
+		epimap = m;
+		M_SetupNextMenu(&NewDef);
+		return;
+	}
+	epimap = 1;
 
 	sprintf(lump, "E%dM1", choice + 1);
 	if (!commercial && W_CheckNumForName(lump) < 0)
@@ -1816,7 +1860,12 @@ void M_Drawer (void)
 	for (i = 0; i < max; i++)
 	{
 		if (currentMenu->menuitems[i].name[0])
-			V_DrawPatchLRes (x, y, 0, W_CacheLumpName(currentMenu->menuitems[i].name ,PU_CACHE));
+		{
+			if (W_CheckNumForName(currentMenu->menuitems[i].name) >= 0)
+				V_DrawPatchLRes (x, y, 0, W_CacheLumpName(currentMenu->menuitems[i].name ,PU_CACHE));
+			else if (currentMenu == &EpiDef && currentMenu->menuitems == UmiEpisodeMenu)
+				M_WriteText (x, y + 4, umi_episodes[i].name);	// no patch: its name
+		}
 		y += LINEHEIGHT;
 	}
 

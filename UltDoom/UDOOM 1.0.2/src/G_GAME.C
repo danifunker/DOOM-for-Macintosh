@@ -482,6 +482,41 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 
 extern  gamestate_t     wipegamestate;
 
+// UMAPINFO: the episode the next level is in (0 = the same one), and the
+// map infos the intermission shows.
+static int		umi_nextepisode = 0;
+umapinfo_t		*wi_lastmapinfo = NULL, *wi_nextmapinfo = NULL;
+
+/*
+====================
+=
+= G_SetDefaultSky
+=
+= The sky G_InitNew picks.  With UMAPINFO it's set on every level (vanilla
+= kept the first level's sky for the whole DOOM II session).
+=
+====================
+*/
+
+static void G_SetDefaultSky (void)
+{
+	if (commercial)
+	{
+		skytexture = R_TextureNumForName ("SKY3");
+		if (gamemap < 12)
+			skytexture = R_TextureNumForName ("SKY1");
+		else if (gamemap < 21)
+			skytexture = R_TextureNumForName ("SKY2");
+	}
+	else if (gameepisode >= 1 && gameepisode <= 4)
+	{
+		char	name[5];
+
+		sprintf(name, "SKY%d", gameepisode);
+		skytexture = R_TextureNumForName (name);
+	}
+}
+
 void G_DoLoadLevel (void)
 {
 	int             i;
@@ -494,6 +529,14 @@ void G_DoLoadLevel (void)
 	if (wipegamestate == GS_LEVEL)
 		wipegamestate = -1;             // force a wipe
 	gamestate = GS_LEVEL;
+
+	// UMAPINFO for this level (S_Start, HU_Start and the rest read it)
+	gamemapinfo = UMI_Lookup (gameepisode, gamemap);
+	if (gamemapinfo && gamemapinfo->skytexture[0] &&
+		R_CheckTextureNumForName (gamemapinfo->skytexture) >= 0)
+		skytexture = R_TextureNumForName (gamemapinfo->skytexture);
+	else if (UMI_Active ())
+		G_SetDefaultSky ();
 	
 	for (i = 0; i < MAXPLAYERS; i++)
 	{
@@ -1101,6 +1144,45 @@ void G_DoCompleted (void)
 	
 	if (automapactive)
 		AM_Stop ();
+
+	// UMAPINFO: the level says where to go (or that the game ends)
+	umi_nextepisode = 0;
+	wi_lastmapinfo = gamemapinfo;
+	if (gamemapinfo)
+	{
+		const char	*next = "";
+		boolean		intermission = false;
+
+		if (gamemapinfo->endpic[0] && strcmp(gamemapinfo->endpic, "-"))
+		{
+			if (gamemapinfo->nointermission)
+			{
+				gameaction = ga_victory;
+				return;
+			}
+			intermission = true;
+		}
+		if (secretexit)
+			next = gamemapinfo->nextsecret;
+		if (!next[0])
+			next = gamemapinfo->nextmap;
+		if (next[0] || intermission)
+		{
+			int		ep = gameepisode, map = gamemap + 1;
+
+			if (next[0])
+				UMI_ParseMapName (next, &ep, &map);
+			if (!commercial && ep != gameepisode)
+				for (i = 0; i < MAXPLAYERS; i++)
+					players[i].didsecret = false;
+			umi_nextepisode = commercial ? 0 : ep;
+			wminfo.didsecret = players[consoleplayer].didsecret;
+			wminfo.epsd = gameepisode - 1;
+			wminfo.last = gamemap - 1;
+			wminfo.next = map - 1;
+			goto frommapinfo;
+		}
+	}
 	
 	if (!commercial)
 		switch(gamemap)
@@ -1176,14 +1258,21 @@ void G_DoCompleted (void)
 			wminfo.next = gamemap;          // go to next level
 	}
 		
+frommapinfo:
+	wi_nextmapinfo = UMI_Lookup (umi_nextepisode ? umi_nextepisode : gameepisode,
+		wminfo.next + 1);
 	wminfo.maxkills = totalkills;
 	wminfo.maxitems = totalitems;
 	wminfo.maxsecret = totalsecret;
 	wminfo.maxfrags = 0;
-	if (commercial)
-		wminfo.partime = 35*cpars[gamemap-1];
-	else
+	if (gamemapinfo && gamemapinfo->partime > 0)
+		wminfo.partime = gamemapinfo->partime;
+	else if (commercial)
+		wminfo.partime = gamemap <= 32 ? 35*cpars[gamemap-1] : 0;
+	else if (gameepisode >= 1 && gameepisode <= 4 && gamemap <= 9)
 		wminfo.partime = 35*pars[gameepisode][gamemap];
+	else
+		wminfo.partime = 0;
 	wminfo.pnum = consoleplayer;
 
 	for (i = 0; i < MAXPLAYERS; i++)
@@ -1221,6 +1310,27 @@ void G_WorldDone (void)
 	if (secretexit)
 		players[consoleplayer].didsecret = true;
 
+	if (gamemapinfo)
+	{	// UMAPINFO texts; "clear" ('-') removes the game's own
+		if (gamemapinfo->intertextsecret && secretexit)
+		{
+			if (gamemapinfo->intertextsecret[0] != '-')
+				F_StartFinale ();
+			return;
+		}
+		else if (gamemapinfo->intertext && !secretexit)
+		{
+			if (gamemapinfo->intertext[0] != '-')
+				F_StartFinale ();
+			return;
+		}
+		else if (gamemapinfo->endpic[0] && gamemapinfo->endpic[0] != '-' && !secretexit)
+		{	// the game ends without a status screen
+			gameaction = ga_victory;
+			return;
+		}
+	}
+
 	if (commercial)
 	{
 		switch (gamemap)
@@ -1249,6 +1359,9 @@ void G_DoWorldDone (void)
 {       
 	gamestate = GS_LEVEL;
 	gamemap = wminfo.next + 1;
+	if (umi_nextepisode)
+		gameepisode = umi_nextepisode;		// UMAPINFO sent us to another episode
+	umi_nextepisode = 0;
 	G_DoLoadLevel ();
 	gameaction = ga_nothing;
 	viewactive = true;

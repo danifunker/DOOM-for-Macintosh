@@ -107,6 +107,7 @@ add_application(UltimateDOOM
     src/mac_wads.c
     src/deh.c
     src/mus2mid.c
+    src/umapinfo.c
     src/Draw68K.s
     src/Blit68K.s
     src/Fast68K.s

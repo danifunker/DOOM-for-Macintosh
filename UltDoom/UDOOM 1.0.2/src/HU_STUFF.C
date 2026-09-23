@@ -315,10 +315,33 @@ void HU_Start(void)
 
   // create the map title widget
   HUlib_initTextLine(&w_title, HU_TITLEX, HU_TITLEY, hu_font, HU_FONTSTART);
-  if (commercial)
-  	s = (char *) DEH_String(HU_TITLE2);
+  if (gamemapinfo && gamemapinfo->levelname)
+  {	// UMAPINFO: "label: levelname"; the label defaults to the map lump name
+  	const char	*lab = gamemapinfo->label ? gamemapinfo->label : gamemapinfo->mapname;
+
+  	if (lab == gamemapinfo->mapname || strcmp(lab, "-"))
+  	{
+  		while (*lab)
+  			HUlib_addCharToTextLine(&w_title, *(lab++));
+  		HUlib_addCharToTextLine(&w_title, ':');
+  		HUlib_addCharToTextLine(&w_title, ' ');
+  	}
+  	s = gamemapinfo->levelname;
+  }
+  else if (commercial)
+  	s = gamemap <= 32 ? (char *) DEH_String(HU_TITLE2) : "";
   else
-  	s = (char *) DEH_String(HU_TITLE);
+  	s = (gameepisode <= 4 && gamemap <= 9) ? (char *) DEH_String(HU_TITLE) : "";
+  if (!*s)
+  {	// a level the built-in tables don't cover (E5M1, MAP33...)
+  	static char	name[9];
+
+  	if (commercial)
+  		sprintf(name, "MAP%02d", gamemap);
+  	else
+  		sprintf(name, "E%dM%d", gameepisode, gamemap);
+  	s = name;
+  }
 	while (*s)
 		HUlib_addCharToTextLine(&w_title, *(s++));
 

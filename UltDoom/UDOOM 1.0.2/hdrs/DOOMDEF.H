@@ -592,6 +592,32 @@ extern int	deh_soulsphere_health, deh_megasphere_health, deh_god_mode_health;
 extern int	deh_idfa_armor, deh_idfa_armor_class, deh_idkfa_armor, deh_idkfa_armor_class;
 extern int	deh_bfg_cells_per_shot, deh_species_infighting;
 
+// UMAPINFO (retro68/src/umapinfo.c): level names, next levels, skies, music,
+// texts and episode menu entries from the WADs.
+typedef struct { int type, special, tag; } umbossaction_t;
+typedef struct
+{
+	char			mapname[9];
+	char			*levelname, *label, *author, *intertext, *intertextsecret;
+	char			levelpic[9], nextmap[9], nextsecret[9], music[9], skytexture[9];
+	char			endpic[9], exitpic[9], enterpic[9], interbackdrop[9], intermusic[9];
+	int				partime;			// tics; 0 = the game's own
+	int				nointermission;
+	int				numbossactions;		// 0 = vanilla, -1 = none
+	umbossaction_t	*bossactions;
+} umapinfo_t;
+#define MAXUMIEPISODES	8
+typedef struct { char patch[9]; char name[64]; int key; char map[9]; } umapepisode_t;
+extern umapinfo_t		*gamemapinfo;			// the level being played, or NULL
+extern umapepisode_t	umi_episodes[MAXUMIEPISODES];
+extern int				umi_numepisodes;
+extern Boolean			umi_episodesdefined;
+void		UMI_Init (void);					// after DEH_Init
+void		S_ChangeMusicByName (const char *lump, int looping);	// "D_E5M1"
+umapinfo_t	*UMI_Lookup (int episode, int map);
+Boolean		UMI_Active (void);
+Boolean		UMI_ParseMapName (const char *name, int *episode, int *map);
+
 // WAD, DeHackEd and lump files that can be loaded at once (gWadFiles).
 #define MAXWADFILES		32
 

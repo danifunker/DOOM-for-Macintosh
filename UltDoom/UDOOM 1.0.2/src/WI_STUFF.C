@@ -4,6 +4,8 @@
 #include "dutils.h"
 #include "r_local.h"
 #include <stdio.h>
+#include "hu_stuff.h"
+#include <ctype.h>
 
 #include "WI_STUFF.PROTO.H"
 
@@ -95,17 +97,83 @@ void WI_slamBackground(void)
 // The ticker is used to detect keys because of timing issues in netgames
 boolean WI_Responder(event_t *ev) { return false; }
 
+// UMAPINFO: the levels just finished and about to be entered (G_GAME.C)
+extern umapinfo_t	*wi_lastmapinfo, *wi_nextmapinfo;
+extern patch_t		*hu_font[HU_FONTSIZE];
+
+/* The name graphic for level index i: UMAPINFO's levelpic, else the game's
+   own; NULL when there is none (a UMAPINFO name is then drawn as text). */
+static patch_t *WI_LevelPic (umapinfo_t *mi, int i)
+{
+	int		count = commercial ? NUMCMAPS : NUMMAPS;
+
+	if (mi && mi->levelpic[0] && W_CheckNumForName(mi->levelpic) >= 0)
+		return W_CacheLumpName(mi->levelpic, PU_CACHE);
+	if (mi && mi->levelname)
+		return NULL;
+	if (lnames && i >= 0 && i < count)
+		return lnames[i];
+	return NULL;
+}
+
+/* A line of text in the HUD font, centred; returns its height. */
+static int WI_DrawString (int y, const char *text)
+{
+	const char	*c;
+	int			w = 0, x;
+
+	for (c = text; *c; c++)
+	{
+		int		ch = toupper(*c) - HU_FONTSTART;
+
+		w += (ch < 0 || ch >= HU_FONTSIZE) ? 4 : SHORT(hu_font[ch]->width);
+	}
+	x = (kScreenWidth - w) / 2;
+	for (c = text; *c; c++)
+	{
+		int		ch = toupper(*c) - HU_FONTSTART;
+
+		if (ch < 0 || ch >= HU_FONTSIZE)
+			x += 4;
+		else
+		{
+			V_DrawPatchLRes(x, y, FB, hu_font[ch]);
+			x += SHORT(hu_font[ch]->width);
+		}
+	}
+	return SHORT(hu_font[0]->height) + 2;
+}
+
+/* Draws a level's name (picture or text) at y; returns the height used. */
+static int WI_DrawLevelName (umapinfo_t *mi, int i, int y)
+{
+	patch_t		*pic = WI_LevelPic(mi, i);
+
+	if (pic)
+	{
+		V_DrawPatchLRes((kScreenWidth - SHORT(pic->width)) / 2, y, FB, pic);
+		return (5 * SHORT(pic->height)) / 4;
+	}
+	if (mi && mi->levelname)
+	{
+		int		h = WI_DrawString(y, mi->levelname);
+
+		if (mi->author)
+			h += WI_DrawString(y + h, mi->author);
+		return h + 4;
+	}
+	return 0;
+}
+
 // Draws "<Levelname> Finished!"
 
 void WI_drawLF(void)
 {
 	int		y = WI_TITLEY;
 
-	V_DrawPatchLRes((kScreenWidth - SHORT(lnames[wbs->last]->width)) / 2, y,
-    FB, lnames[wbs->last]);
+	y += WI_DrawLevelName(wi_lastmapinfo, wbs->last, y);
 	
   // draw "Finished!"
-  y += (5 * SHORT(lnames[wbs->last]->height)) / 4;
   V_DrawPatchLRes((kScreenWidth - SHORT(finished->width)) / 2, y,
     FB, finished);
 }
@@ -121,9 +189,8 @@ void WI_drawEL(void)
     FB, entering);
 
   // draw level
-  y += (5 * SHORT(lnames[wbs->next]->height)) / 4;
-  V_DrawPatchLRes((kScreenWidth - SHORT(lnames[wbs->next]->width)) / 2, y,
-    FB, lnames[wbs->next]);
+  y += (5 * SHORT(entering->height)) / 4;
+  WI_DrawLevelName(wi_nextmapinfo, wbs->next, y);
 }
 
 void WI_drawOnLnode(int n, patch_t *c[])
@@ -369,6 +436,9 @@ static boolean snl_pointeron = false;
 
 void WI_initShowNextLoc(void)
 {
+  if (wi_nextmapinfo && wi_nextmapinfo->enterpic[0] &&
+	  W_CheckNumForName(wi_nextmapinfo->enterpic) >= 0)
+	  V_DrawPatchLRes(0, 0, 1, W_CacheLumpName(wi_nextmapinfo->enterpic, PU_CACHE));
   state = ShowNextLoc;
   acceleratestage = 0;
   cnt = SHOWNEXTLOCDELAY * TICRATE;
@@ -1005,9 +1075,12 @@ void WI_reinitScreen1 (void)
 		sprintf(name, "WIMAP%d", wbs->epsd);
 
 #ifdef SPECIAL
-  if (wbs->epsd == 3)
+  if (wbs->epsd >= 3)			// Ultimate DOOM's E4, SIGIL's E5/E6
 	  strcpy(name,"INTERPIC");
 #endif
+  if (wi_lastmapinfo && wi_lastmapinfo->exitpic[0] &&
+	  W_CheckNumForName(wi_lastmapinfo->exitpic) >= 0)
+	  strcpy(name, wi_lastmapinfo->exitpic);	// UMAPINFO
 
 	bg = W_CacheLumpName(name, PU_CACHE);    // background
   
@@ -1027,9 +1100,12 @@ void WI_loadData(void)
 		sprintf(name, "WIMAP%d", wbs->epsd);
 
 #ifdef SPECIAL
-  if (wbs->epsd == 3)
+  if (wbs->epsd >= 3)			// Ultimate DOOM's E4, SIGIL's E5/E6
 	  strcpy(name,"INTERPIC");
 #endif
+  if (wi_lastmapinfo && wi_lastmapinfo->exitpic[0] &&
+	  W_CheckNumForName(wi_lastmapinfo->exitpic) >= 0)
+	  strcpy(name, wi_lastmapinfo->exitpic);	// UMAPINFO
 
 	bg = W_CacheLumpName(name, PU_CACHE);    // background
   
@@ -1071,7 +1147,7 @@ void WI_loadData(void)
 	  for (i=0 ; i<NUMCMAPS ; i++)
 	  {								
 		sprintf(name, "CWILV%2.2d", i);
-		lnames[i] = W_CacheLumpName(name, PU_STATIC);
+		lnames[i] = W_CheckNumForName(name) >= 0 ? W_CacheLumpName(name, PU_STATIC) : NULL;
 	  }					
 
   }
@@ -1084,7 +1160,7 @@ void WI_loadData(void)
 	  for (i=0 ; i<NUMMAPS ; i++)
 	  {
 			sprintf(name, "WILV%d%d", wbs->epsd, i);
-			lnames[i] = W_CacheLumpName(name, PU_STATIC);
+			lnames[i] = W_CheckNumForName(name) >= 0 ? W_CacheLumpName(name, PU_STATIC) : NULL;
 	  }
 
 	  yah[0] = W_CacheLumpName("WIURH0", PU_STATIC);  // you are here
@@ -1160,7 +1236,8 @@ void WI_unloadData(void)
   if (commercial)
   {
   	for (i=0 ; i<NUMCMAPS ; i++)
-  		Z_ChangeTag(lnames[i], PU_CACHE);
+  		if (lnames[i])
+  			Z_ChangeTag(lnames[i], PU_CACHE);
   }
   else
   {
@@ -1169,7 +1246,8 @@ void WI_unloadData(void)
     Z_ChangeTag(splat, PU_CACHE);
   	
   	for (i = 0; i < NUMMAPS; i++)
-  		Z_ChangeTag(lnames[i], PU_CACHE);
+  		if (lnames[i])
+  			Z_ChangeTag(lnames[i], PU_CACHE);
 		
     if (wbs->epsd < 3)
 	    for (j = 0; j < NUMANIMS[wbs->epsd]; j++)

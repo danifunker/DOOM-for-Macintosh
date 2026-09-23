@@ -1546,6 +1546,56 @@ void A_BossDeath (mobj_t *mo)
 	mobj_t		*mo2;
 	line_t		junk;
 	int			i;
+
+	// UMAPINFO bossaction: the level lists which monsters' deaths trigger
+	// which line special and tag (or "clear" for none)
+	if (gamemapinfo && gamemapinfo->numbossactions != 0)
+	{
+		mobj_t	*activator = NULL;
+
+		if (gamemapinfo->numbossactions < 0)
+			return;
+		for (i = 0; i < MAXPLAYERS; i++)
+			if (playeringame[i] && players[i].health > 0)
+			{
+				activator = players[i].mo;
+				break;
+			}
+		if (!activator)
+			return;						// no one left alive
+		for (i = 0; i < gamemapinfo->numbossactions; i++)
+			if (gamemapinfo->bossactions[i].type == mo->type)
+				break;
+		if (i == gamemapinfo->numbossactions)
+			return;
+		for (th = thinkercap.next; th != &thinkercap; th = th->next)
+		{
+			if (th->function != gP_MobjThinkerPtr)
+				continue;
+			mo2 = (mobj_t *)th;
+			if (mo2 != mo && mo2->type == mo->type && mo2->health > 0)
+				return;					// another one still alive
+		}
+		for (i = 0; i < gamemapinfo->numbossactions; i++)
+			if (gamemapinfo->bossactions[i].type == mo->type)
+			{
+				// Run it as a line special on line 0 (restored after), with a
+				// living player as the activator so monster-only restrictions
+				// don't apply.  Teleporters would move the player: skipped.
+				short	oldspecial = lines[0].special, oldtag = lines[0].tag;
+				int		special = gamemapinfo->bossactions[i].special;
+
+				if (special == 39 || special == 97 || special == 125 || special == 126)
+					continue;
+				lines[0].special = special;
+				lines[0].tag = gamemapinfo->bossactions[i].tag;
+				if (!P_UseSpecialLine (activator, &lines[0], 0))
+					P_CrossSpecialLine (0, 0, activator);
+				lines[0].special = oldspecial;
+				lines[0].tag = oldtag;
+			}
+		return;
+	}
 		
 	if (commercial)
 	{

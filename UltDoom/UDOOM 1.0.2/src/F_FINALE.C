@@ -40,6 +40,9 @@ char	*t4text = T4TEXT;
 char	*t5text = T5TEXT;
 char	*t6text = T6TEXT;
 
+// Set when the finale follows a UMAPINFO level (its text and end picture).
+static boolean	using_FMI = false;
+
 char	*finaletext = NULL;
 char	*finaleflat = NULL;
 
@@ -125,6 +128,30 @@ void F_StartFinale (void)
 		}
 		S_ChangeMusic(mus_victor, true);
 	}
+	// UMAPINFO: the level's own text, backdrop and music
+	using_FMI = false;
+	if (gamemapinfo)
+	{
+		extern boolean	secretexit;
+
+		if (gamemapinfo->intermusic[0])
+			S_ChangeMusicByName (gamemapinfo->intermusic, true);
+		if (gamemapinfo->intertextsecret && secretexit &&
+			gamemapinfo->intertextsecret[0] != '-')
+			finaletext = gamemapinfo->intertextsecret;
+		else if (gamemapinfo->intertext && !secretexit &&
+			gamemapinfo->intertext[0] != '-')
+			finaletext = gamemapinfo->intertext;
+		if (!finaletext)
+			finaletext = "The End";
+		if (gamemapinfo->interbackdrop[0])
+			finaleflat = gamemapinfo->interbackdrop;
+		using_FMI = true;
+	}
+	if (!finaletext)
+		finaletext = "";			// an episode the game has no text for
+	if (!finaleflat)
+		finaleflat = "FLOOR4_8";
 	if (finaletext)
 		finaletext = (char *) DEH_String(finaletext);	// DeHackEd Text / BEX
 	
@@ -149,14 +176,67 @@ boolean F_Responder (event_t *event)
 =======================
 */
 
+/*
+=======================
+=
+= FMI_Ticker
+=
+= The finale after a UMAPINFO level (PrBoom+'s rules): the text, then the
+= level's end picture, the bunny scroll, the cast, or the next level.
+=
+=======================
+*/
+
+static void FMI_Ticker (void)
+{
+	int		i;
+
+	if (finalestage == 0 && finalecount > 50)
+		for (i = 0; i < MAXPLAYERS; i++)
+			if (players[i].cmd.buttons)
+				goto next_level;
+
+	finalecount++;
+	if (finalestage == 0 && finalecount > ((strlen(finaletext) * TEXTSPEED) + TEXTWAIT))
+	{
+	next_level:
+		if (gamemapinfo->endpic[0] && strcmp(gamemapinfo->endpic, "-"))
+		{
+			if (!strcasecmp(gamemapinfo->endpic, "$CAST"))
+			{
+				F_StartCast ();
+				using_FMI = false;
+			}
+			else
+			{
+				finalecount = 0;
+				finalestage = 1;
+				wipegamestate = -1;		// force a wipe
+				if (!strcasecmp(gamemapinfo->endpic, "$BUNNY"))
+					S_StartMusic (mus_bunny);
+				else if (!strcmp(gamemapinfo->endpic, "!"))
+					using_FMI = false;	// the game's own ending
+			}
+		}
+		else
+			gameaction = ga_worlddone;	// on to the next level
+	}
+}
+
 void F_Ticker (void)
 {
 	int		i;
+
+	if (using_FMI)
+	{
+		FMI_Ticker ();
+		return;
+	}
 	
 //
 // check for skipping
 //
-	if (commercial && finalecount > 50)
+	if (commercial && finalecount > 50 && finalestage != 2)
 	{	// go on to the next level
 		for (i = 0; i < MAXPLAYERS; i++)
 			if (players[i].cmd.buttons)
@@ -223,6 +303,19 @@ void F_TextWrite (void)
 	int		cx, cy;
 	
 	remapArray = remapMac;
+
+	{	// UMAPINFO's interbackdrop may name a full-screen picture
+		extern int	firstflat, lastflat;
+		int			lump = W_CheckNumForName (finaleflat);
+
+		if (lump >= 0 && (lump < firstflat || lump > lastflat))
+		{
+			V_DrawPatchLRes (0, 0, 0, W_CacheLumpNum (lump, PU_CACHE));
+			goto drawtext;
+		}
+		if (lump < 0)
+			finaleflat = "FLOOR4_8";
+	}
 	
 //
 // erase the entire screen to a tiled background
@@ -301,6 +394,7 @@ void F_TextWrite (void)
 	}
 
 //
+drawtext:
 // draw some of the text onto the screen
 //
 	cx = 10;
@@ -793,6 +887,17 @@ void F_Drawer (void)
 	if (finalestage == 2)
 	{
 		F_CastDrawer ();
+		return;
+	}
+
+	if (using_FMI && finalestage)
+	{	// UMAPINFO end picture or the bunny
+		int		lump;
+
+		if (!strcasecmp(gamemapinfo->endpic, "$BUNNY"))
+			F_BunnyScroll ();
+		else if ((lump = W_CheckNumForName(gamemapinfo->endpic)) >= 0)
+			V_DrawPatchLRes (0, 0, 0, W_CacheLumpNum(lump, PU_CACHE));
 		return;
 	}
 

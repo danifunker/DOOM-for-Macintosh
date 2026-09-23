@@ -305,6 +305,7 @@ static void Reload(void)
 
     W_InitMultipleFiles();
     DEH_Init();
+    UMI_Init();
     StatusDialog(80, 20);
     M_Init();
     R_Init();
@@ -430,6 +431,18 @@ static void LogMusic(const char *track, const char *what)
             fclose(f);
         }
     }
+}
+
+/* S_ChangeMusic reports what QuickTime did with a track (-musiclog). */
+void MacWads_LogMusicErr(const char *track, const char *what, long err)
+{
+    char msg[96];
+
+    if (err)
+        sprintf(msg, "%s (error %ld)", what, err);
+    else
+        strcpy(msg, what);
+    LogMusic(track, msg);
 }
 
 /* Writes a file of type 'Midi' (QuickTime imports those). */
