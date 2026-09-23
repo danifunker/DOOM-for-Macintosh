@@ -375,7 +375,8 @@ boolean PIT_CheckThing (mobj_t *thing)
 		{		// don't hit same species as originator
 			if (thing == tmthing->target)
 				return true;
-			if (thing->type != MT_PLAYER)
+			// DeHackEd "Monsters Infight = 221" lets them hurt their own kind
+			if (thing->type != MT_PLAYER && !deh_species_infighting)
 				return false;	// explode, but do no damage
 			// let players missile other players
 		}

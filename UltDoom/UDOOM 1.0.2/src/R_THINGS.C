@@ -73,40 +73,30 @@ void R_InstallSpriteLump (int lump, unsigned frame, unsigned rotation, boolean f
 	
 	if ((int)frame > maxframe)
 		maxframe = frame;
-		
+
+	// Boom: the lumps are scanned newest first, and the first one found for
+	// a frame and rotation wins, so a PWAD can replace some rotations of a
+	// frame or turn a rotated frame into a single one (vanilla quit with
+	// "has multip rot=0 lump" / "has rotations and a rot=0 lump").
 	if (rotation == 0)
 	{
-// the lump should be used for all rotations
-		if (sprtemp[frame].rotate == false)
-			I_Error ("R_InitSprites: Sprite %s frame %c has multip rot=0 lump"
-			, spritename, 'A'+frame);
-		if (sprtemp[frame].rotate == true)
-			I_Error ("R_InitSprites: Sprite %s frame %c has rotations and a rot=0 lump"
-			, spritename, 'A'+frame);
-			
-		sprtemp[frame].rotate = false;
 		for (r=0 ; r<8 ; r++)
-		{
-			sprtemp[frame].lump[r] = lump - firstspritelump;
-			sprtemp[frame].flip[r] = (byte)flipped;
-		}
+			if (sprtemp[frame].lump[r] == -1)
+			{
+				sprtemp[frame].lump[r] = lump - firstspritelump;
+				sprtemp[frame].flip[r] = (byte)flipped;
+				sprtemp[frame].rotate = false;
+			}
 		return;
 	}
 	
-// the lump is only used for one rotation
-	if (sprtemp[frame].rotate == false)
-		I_Error ("R_InitSprites: Sprite %s frame %c has rotations and a rot=0 lump"
-		, spritename, 'A'+frame);
-		
-	sprtemp[frame].rotate = true;
-		
 	rotation--;		// make 0 based
-	if (sprtemp[frame].lump[rotation] != -1)
-		I_Error ("R_InitSprites: Sprite %s : %c : %c has two lumps mapped to it"
-		,spritename, 'A'+frame, '1'+rotation);
-		
-	sprtemp[frame].lump[rotation] = lump - firstspritelump;
-	sprtemp[frame].flip[rotation] = (byte)flipped;
+	if (sprtemp[frame].lump[rotation] == -1)
+	{
+		sprtemp[frame].lump[rotation] = lump - firstspritelump;
+		sprtemp[frame].flip[rotation] = (byte)flipped;
+		sprtemp[frame].rotate = true;
+	}
 }
 
 /* 
@@ -164,16 +154,13 @@ void R_InitSpriteDefs (char **namelist)
 		//
 		// scan the lumps, filling in the frames for whatever is found
 		//
-		for (l = (start + 1); l < end; l++)
+		for (l = end - 1; l > start; l--)		// newest first (see R_InstallSpriteLump)
 		{
 			if ( *((int *)lumpinfo[l].name) == intname)
 			{
 				frame = lumpinfo[l].name[4] - 'A';
 				rotation = lumpinfo[l].name[5] - '0';
-				if (modifiedgame)
-					patched = W_GetNumForName (lumpinfo[l].name);
-				else
-					patched = l;
+				patched = l;
 				
 				R_InstallSpriteLump (patched, frame, rotation, false);
 				
@@ -329,12 +316,19 @@ void R_DrawMaskedColumn (column_t *column)
 	int		topscreen, bottomscreen;
 	fixed_t	basetexturemid;
 	
+	int		top = -1;
+
 	basetexturemid = dc_texturemid;
 	
 	for ( ; column->topdelta != 0xff ; )
 	{
+		// DeePsea tall patches: relative topdelta past row 254
+		if ((int)column->topdelta <= top)
+			top += column->topdelta;
+		else
+			top = column->topdelta;
 // calculate unclipped screen coordinates for post
-		topscreen = sprtopscreen + spryscale * column->topdelta;
+		topscreen = sprtopscreen + spryscale * top;
 		bottomscreen = topscreen + spryscale * column->length;
 		dc_yl = (topscreen + FRACUNIT - 1) >> FRACBITS;
 		dc_yh = (bottomscreen - 1) >> FRACBITS;
@@ -347,9 +341,15 @@ void R_DrawMaskedColumn (column_t *column)
 		if (dc_yl <= dc_yh)
 		{
 			dc_source = (byte *)column + 3;
-			dc_texturemid = basetexturemid - (column->topdelta << FRACBITS);
+			dc_texturemid = basetexturemid - (top << FRACBITS);
 //			dc_source = (byte *)column + 3 - column->topdelta;
-			colfunc ();		// either R_DrawColumn or R_DrawFuzzColumn
+			if (column->length > 128 && colfunc == basecolfunc && gHiRes != 1)
+			{	// the 68K drawers would wrap a tall post at row 128
+				dc_texheight = 0;
+				R_DrawColumnHeight ();
+			}
+			else
+				colfunc ();		// either R_DrawColumn or R_DrawFuzzColumn
 		}
 		column = (column_t *)(  (byte *)column + column->length + 4);
 	}

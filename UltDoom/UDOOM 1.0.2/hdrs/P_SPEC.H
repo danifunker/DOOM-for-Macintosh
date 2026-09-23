@@ -34,7 +34,7 @@ typedef struct
 
 #define MAXANIMS                32
 
-extern  anim_t  anims[MAXANIMS], *lastanim;
+extern  anim_t  *anims, *lastanim;		// grows as needed (limit removal)
 
 //
 // End-level timer (-TIMER option)

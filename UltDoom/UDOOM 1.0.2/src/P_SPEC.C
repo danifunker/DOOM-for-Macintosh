@@ -45,42 +45,87 @@ animdef_t		animdefs[] =
 	{true,	"DBRAIN4",	"DBRAIN1",	8L},	// 22
 };
 
-anim_t	anims[MAXANIMS], *lastanim = NULL;
+anim_t	*anims = NULL, *lastanim = NULL;
+static int	maxanims = 0;
 
+/*
+===================
+=
+= P_AddPicAnim
+=
+===================
+*/
+
+static void P_AddPicAnim (boolean istexture, const char *startname,
+	const char *endname, int speed)
+{
+	int		pic, base;
+
+	if (istexture)
+	{
+		if (R_CheckTextureNumForName((char *)startname) == -1L ||
+			R_CheckTextureNumForName((char *)endname) == -1L)
+			return;		// different episode (or not in this WAD)
+		pic = R_TextureNumForName ((char *)endname);
+		base = R_TextureNumForName ((char *)startname);
+	}
+	else
+	{
+		if (W_CheckNumForName((char *)startname) == -1L ||
+			W_CheckNumForName((char *)endname) == -1L)
+			return;
+		pic = R_FlatNumForName ((char *)endname);
+		base = R_FlatNumForName ((char *)startname);
+	}
+	if (pic - base + 1 < 2)
+		I_Error ("P_InitPicAnims: bad cycle from %s to %s", startname, endname);
+
+	if (lastanim - anims == maxanims)
+	{	// limit removal: vanilla had room for 32
+		int		used = maxanims;
+
+		anims = P_GrowArray(anims, &maxanims, MAXANIMS, sizeof(anim_t));
+		lastanim = anims + used;
+	}
+	lastanim->istexture = istexture;
+	lastanim->picnum = pic;
+	lastanim->basepic = base;
+	lastanim->numpics = pic - base + 1;
+	lastanim->speed = speed;
+	lastanim++;
+}
 
 void P_InitPicAnims (void)
 {
 	int		i;
+	int		lump = W_CheckNumForName ("ANIMATED");
 	
-//
-//	Init animation
-//
 	lastanim = anims;
-	for (i = 0; i < 22; /* animdefs[i].istexture != -1L; */ i++)
-	{
-		if (animdefs[i].istexture)
+
+	if (lump >= 0)
+	{	// Boom's ANIMATED lump: 23-byte records (flag, end name, start
+		// name, little-endian speed), ending with a flag of 255.
+		const byte	*p = W_CacheLumpNum (lump, PU_STATIC);
+		const byte	*base = p;
+		int			len = W_LumpLength (lump);
+
+		while (p + 23 <= base + len && *p != 255)
 		{
-			if (R_CheckTextureNumForName(animdefs[i].startname) == -1L)
-				continue;		// different episode
-			lastanim->picnum = R_TextureNumForName (animdefs[i].endname);
-			lastanim->basepic = R_TextureNumForName (animdefs[i].startname);
+			char	endname[9], startname[9];
+
+			memcpy (endname, p + 1, 8);		endname[8] = 0;
+			memcpy (startname, p + 10, 8);	startname[8] = 0;
+			P_AddPicAnim (p[0] & 1, startname, endname,
+				p[19] | (p[20] << 8) | (p[21] << 16) | (p[22] << 24));
+			p += 23;
 		}
-		else
-		{
-			if (W_CheckNumForName(animdefs[i].startname) == -1L)
-				continue;
-			lastanim->picnum = R_FlatNumForName (animdefs[i].endname);
-			lastanim->basepic = R_FlatNumForName (animdefs[i].startname);
-		}
-		lastanim->istexture = animdefs[i].istexture;
-		lastanim->numpics = lastanim->picnum - lastanim->basepic + 1;
-		if (lastanim->numpics < 2)
-			I_Error ("P_InitPicAnims: bad cycle from %s to %s"
-			, animdefs[i].startname, animdefs[i].endname);
-		lastanim->speed = animdefs[i].speed;
-		lastanim++;
+		Z_Free ((void *)base);
+		return;
 	}
-	
+
+	for (i = 0; i < 22; /* animdefs[i].istexture != -1L; */ i++)
+		P_AddPicAnim (animdefs[i].istexture, animdefs[i].startname,
+			animdefs[i].endname, animdefs[i].speed);
 }
 
 

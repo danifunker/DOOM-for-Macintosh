@@ -976,8 +976,8 @@ pascal Boolean WADFilter (CInfoPBPtr pb)
 		if (len >= 4)
 		{
 			BlockMoveData( &fileName[len - 3], &tempL, 4L );
-			if (tempL == '.WAD')
-				return kFalse;
+			if (tempL == '.WAD' || tempL == '.DEH' || tempL == '.BEX')
+				return kFalse;		// WADs and DeHackEd patches
 		}
 	}
 	

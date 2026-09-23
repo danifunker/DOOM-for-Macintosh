@@ -190,8 +190,8 @@ boolean ST_Responder (event_t *ev)
 					if (plyr->cheats & CF_GODMODE)
 					{
 						if (plyr->mo)
-							plyr->mo->health = 100;
-						plyr->health = 100;
+							plyr->mo->health = deh_god_mode_health;
+						plyr->health = deh_god_mode_health;
 						plyr->message = STSTR_DQDON;
 					}
 				else 
@@ -200,8 +200,8 @@ boolean ST_Responder (event_t *ev)
 				// 'fa' cheat for killer fucking arsenal
 				else if (cht_CheckCheat(&cheat_ammonokey, ev->data1))
 				{
-					plyr->armorpoints = 200;
-					plyr->armortype = 2;
+					plyr->armorpoints = deh_idfa_armor;
+					plyr->armortype = deh_idfa_armor_class;
 					for (i = 0; i < NUMWEAPONS; i++)
 						plyr->weaponowned[i] = true;
 					for (i = 0; i < NUMAMMO; i++)
@@ -211,8 +211,8 @@ boolean ST_Responder (event_t *ev)
 				// 'kfa' cheat for killer fucking arsenal
 				else if (cht_CheckCheat(&cheat_ammo, ev->data1))
 				{
-					plyr->armorpoints = 200;
-					plyr->armortype = 2;
+					plyr->armorpoints = deh_idkfa_armor;
+					plyr->armortype = deh_idkfa_armor_class;
 					for (i=0;i<NUMWEAPONS;i++)
 						plyr->weaponowned[i] = true;
 					for (i=0;i<NUMAMMO;i++)

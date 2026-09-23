@@ -36,9 +36,9 @@ line_t		*lines = NULL;
 int			numsides = 0;
 side_t		*sides = NULL;
 
-short		*blockmaplump = NULL;			// offsets in blockmap are from here
+int			*blockmaplump = NULL;			// offsets in blockmap are from here
 int			blockmaplumpcount = 0;
-short		*blockmap = NULL;
+int			*blockmap = NULL;
 int			bmapwidth = 0, bmapheight = 0;	// in mapblocks
 fixed_t		bmaporgx = 0, bmaporgy = 0;		// origin of block map
 mobj_t		**blocklinks = NULL;			// for thing chains
@@ -118,18 +118,25 @@ void P_LoadSegs (int lump)
 	li = segs;
 	for (i=0 ; i<numsegs ; i++, li++, ml++)
 	{
-		li->v1 = &vertexes[SHORT(ml->v1)];
-		li->v2 = &vertexes[SHORT(ml->v2)];
+		// limit removal: map indices are unsigned (vanilla read them signed
+		// and crashed past 32767)
+		li->v1 = &vertexes[(unsigned short)SHORT(ml->v1)];
+		li->v2 = &vertexes[(unsigned short)SHORT(ml->v2)];
 					
 		li->angle = (SHORT(ml->angle))<<16;
 		li->offset = (SHORT(ml->offset))<<16;
-		linedef = SHORT(ml->linedef);
+		linedef = (unsigned short)SHORT(ml->linedef);
+		if (linedef >= numlines)
+			I_Error ("P_LoadSegs: seg %i refers to linedef %i of %i", i, linedef, numlines);
 		ldef = &lines[linedef];
 		li->linedef = ldef;
-		side = SHORT(ml->side);
+		side = SHORT(ml->side) & 1;
+		if (ldef->sidenum[side] == -1)
+			I_Error ("P_LoadSegs: linedef %i has no sidedef on side %i", linedef, side);
 		li->sidedef = &sides[ldef->sidenum[side]];
 		li->frontsector = sides[ldef->sidenum[side]].sector;
-		if (ldef-> flags & ML_TWOSIDED)
+		// A two-sided flag on a one-sided line crashed vanilla.
+		if ((ldef-> flags & ML_TWOSIDED) && ldef->sidenum[side^1] != -1)
 			li->backsector = sides[ldef->sidenum[side^1]].sector;
 		else
 			li->backsector = 0;
@@ -163,8 +170,8 @@ void P_LoadSubsectors (int lump)
 	ss = subsectors;
 	for (i=0 ; i<numsubsectors ; i++, ss++, ms++)
 	{
-		ss->numlines = SHORT(ms->numsegs);
-		ss->firstline = SHORT(ms->firstseg);
+		ss->numlines = (unsigned short)SHORT(ms->numsegs);
+		ss->firstline = (unsigned short)SHORT(ms->firstseg);
 	}
 	
 	Z_Free (data);
@@ -333,8 +340,8 @@ void P_LoadLineDefs (int lump)
 		ld->flags = SHORT(mld->flags);
 		ld->special = SHORT(mld->special);
 		ld->tag = SHORT(mld->tag);
-		v1 = ld->v1 = &vertexes[SHORT(mld->v1)];
-		v2 = ld->v2 = &vertexes[SHORT(mld->v2)];
+		v1 = ld->v1 = &vertexes[(unsigned short)SHORT(mld->v1)];
+		v2 = ld->v2 = &vertexes[(unsigned short)SHORT(mld->v2)];
 		ld->dx = v2->x - v1->x;
 		ld->dy = v2->y - v1->y;
 		if (!ld->dx)
@@ -369,8 +376,13 @@ void P_LoadLineDefs (int lump)
 			ld->bbox[BOXBOTTOM] = v2->y;
 			ld->bbox[BOXTOP] = v1->y;
 		}
-		ld->sidenum[0] = SHORT(mld->sidenum[0]);
-		ld->sidenum[1] = SHORT(mld->sidenum[1]);
+		// unsigned, with 0xFFFF (and anything past the end) meaning none
+		ld->sidenum[0] = (unsigned short)SHORT(mld->sidenum[0]);
+		ld->sidenum[1] = (unsigned short)SHORT(mld->sidenum[1]);
+		if (ld->sidenum[0] >= numsides)
+			ld->sidenum[0] = -1;
+		if (ld->sidenum[1] >= numsides)
+			ld->sidenum[1] = -1;
 		if (ld->sidenum[0] != -1)
 			ld->frontsector = sides[ld->sidenum[0]].sector;
 		else
@@ -414,7 +426,13 @@ void P_LoadSideDefs (int lump)
 		sd->toptexture = R_TextureNumForName(msd->toptexture);
 		sd->bottomtexture = R_TextureNumForName(msd->bottomtexture);
 		sd->midtexture = R_TextureNumForName(msd->midtexture);
-		sd->sector = &sectors[SHORT(msd->sector)];
+		{
+			int		sec = (unsigned short)SHORT(msd->sector);
+
+			if (sec >= numsectors)
+				sec = 0;			// vanilla crashed on a bad sector number
+			sd->sector = &sectors[sec];
+		}
 	}
 	
 	Z_Free (data);
@@ -433,19 +451,35 @@ void P_LoadSideDefs (int lump)
 void P_LoadBlockMap (int lump)
 {
 	int		i, count;
-	
-	blockmaplump = W_CacheLumpNum (lump, PU_LEVEL);
-	blockmap = blockmaplump + 4;
+	short	*wadblockmap;
+
+	// Limit removal: kept as ints so that offsets past 32767 (blockmaps
+	// over 64 KB, big open maps) work.  The lists end with 0xFFFF, which
+	// becomes -1; everything else is unsigned.
 	count = W_LumpLength (lump) / 2;
+	if (count < 4)
+		I_Error ("This level has no BLOCKMAP.  Rebuild it with a node builder.");
+	wadblockmap = W_CacheLumpNum (lump, PU_STATIC);
+	blockmaplump = Z_Malloc (count * sizeof(int), PU_LEVEL, NULL);
 	blockmaplumpcount = count;
-	for (i = 0; i < count; i++)
-		blockmaplump[i] = SHORT(blockmaplump[i]);
-	
+	blockmaplump[0] = SHORT(wadblockmap[0]);
+	blockmaplump[1] = SHORT(wadblockmap[1]);
+	blockmaplump[2] = (unsigned short)SHORT(wadblockmap[2]);
+	blockmaplump[3] = (unsigned short)SHORT(wadblockmap[3]);
+	for (i = 4; i < count; i++)
+	{
+		unsigned short	v = SHORT(wadblockmap[i]);
+
+		blockmaplump[i] = (v == 0xFFFF) ? -1 : v;
+	}
+	Z_Free (wadblockmap);
+	blockmap = blockmaplump + 4;
+
 	bmaporgx = blockmaplump[0] << FRACBITS;
 	bmaporgy = blockmaplump[1] << FRACBITS;
 	bmapwidth = blockmaplump[2];
 	bmapheight = blockmaplump[3];
-	
+
 // clear out mobj chains
 	count = sizeof(*blocklinks) * bmapwidth * bmapheight;
 	blocklinks = Z_Malloc (count, PU_LEVEL, 0);
@@ -489,6 +523,8 @@ void P_GroupLines (void)
 	total = 0;
 	for (i=0 ; i<numlines ; i++, li++)
 	{
+		if (!li->frontsector)
+			I_Error ("P_GroupLines: linedef %i has no front sidedef", i);
 		total++;
 		li->frontsector->linecount++;
 		if (li->backsector && li->backsector != li->frontsector)
@@ -612,7 +648,21 @@ void P_SetupLevel (int episode, int map, int playermask, skill_t skill)
 	P_LoadNodes (lumpnum+ML_NODES);
 	P_LoadSegs (lumpnum+ML_SEGS);
 	
-	rejectmatrix = W_CacheLumpNum (lumpnum+ML_REJECT,PU_LEVEL);
+	{	// A REJECT shorter than numsectors^2 bits (or none at all) read
+		// past its end in vanilla; pad it with zeros (nothing rejected).
+		int		needed = (numsectors * numsectors + 7) / 8;
+		int		have = W_LumpLength (lumpnum+ML_REJECT);
+
+		if (have >= needed)
+			rejectmatrix = W_CacheLumpNum (lumpnum+ML_REJECT,PU_LEVEL);
+		else
+		{
+			rejectmatrix = Z_Malloc (needed, PU_LEVEL, NULL);
+			memset (rejectmatrix, 0, needed);
+			if (have > 0)
+				W_ReadLump (lumpnum+ML_REJECT, rejectmatrix);
+		}
+	}
 	P_GroupLines ();
 
 	bodyqueslot = 0;

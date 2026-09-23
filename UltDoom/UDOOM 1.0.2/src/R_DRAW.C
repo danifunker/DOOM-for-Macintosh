@@ -47,6 +47,74 @@ int						dc_yh = 0;
 fixed_t				dc_iscale = 0;
 fixed_t				dc_texturemid = 0;
 byte					*dc_source = NULL;		// first pixel in a column (possibly virtual)
+int						dc_texheight = 0;
+
+/*
+===================
+=
+= R_DrawColumnHeight
+=
+= Limit removal (from Boom): a column of a texture dc_texheight rows tall,
+= for walls that aren't 128 high (the 68K drawers mask the row with 127),
+= or with no wrapping at all (dc_texheight 0) for masked posts taller
+= than 128.  Slower than the assembly drawers; used only when needed.
+=
+===================
+*/
+
+void R_DrawColumnHeight (void)
+{
+	int				count = dc_yh - dc_yl + 1;
+	byte			*dest;
+	const byte		*source = dc_source;
+	const byte		*colormap = dc_colormap;
+	int				pitch = gHiRes ? kHiResRowBytes : kScreenWidth;
+	fixed_t			fracstep = dc_iscale;
+	fixed_t			frac;
+	int				heightmask = dc_texheight - 1;
+
+	if (count <= 0)
+		return;
+	dest = ylookup[dc_yl] + columnofs[dc_x];
+	frac = dc_texturemid + (dc_yl - centery) * fracstep;
+
+	if (dc_texheight <= 0)
+	{
+		do
+		{
+			*dest = colormap[source[frac >> FRACBITS]];
+			dest += pitch;
+			frac += fracstep;
+		} while (--count);
+	}
+	else if (dc_texheight & heightmask)
+	{	// not a power of two: keep frac within [0, height)
+		fixed_t		height = dc_texheight << FRACBITS;
+
+		if (frac < 0)
+			while ((frac += height) < 0)
+				;
+		else
+			while (frac >= height)
+				frac -= height;
+		do
+		{
+			*dest = colormap[source[frac >> FRACBITS]];
+			dest += pitch;
+			if ((frac += fracstep) >= height)
+				frac -= height;
+		} while (--count);
+	}
+	else
+	{
+		do
+		{
+			*dest = colormap[source[(frac >> FRACBITS) & heightmask]];
+			dest += pitch;
+			frac += fracstep;
+		} while (--count);
+	}
+}
 
 /*
  *

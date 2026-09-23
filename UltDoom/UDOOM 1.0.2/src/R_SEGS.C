@@ -15,6 +15,7 @@ boolean		markfloor = 0;		// false if the back side is the same plane
 boolean		markceiling = 0;
 boolean		maskedtexture = 0;
 int			toptexture = 0, bottomtexture = 0, midtexture = 0;
+static int	topheight, bottomheight, midheight;	// in rows, for R_WallColumn
 
 
 angle_t		rw_normalangle = 0;
@@ -232,7 +233,7 @@ void R_RenderSegLoop (void)
 			dc_yh = yh;
 			dc_texturemid = rw_midtexturemid;
 			dc_source = R_GetColumn(midtexture,texturecolumn);
-			colfunc ();
+			R_WallColumn (midheight);
 			ceilingclip[rw_x] = viewheight;
 			floorclip[rw_x] = -1;
 		}
@@ -250,7 +251,7 @@ void R_RenderSegLoop (void)
 					dc_yh = mid;
 					dc_texturemid = rw_toptexturemid;
 					dc_source = R_GetColumn(toptexture,texturecolumn);
-					colfunc ();
+					R_WallColumn (topheight);
 					ceilingclip[rw_x] = mid;
 				}
 				else
@@ -275,7 +276,7 @@ void R_RenderSegLoop (void)
 					dc_texturemid = rw_bottomtexturemid;
 					dc_source = R_GetColumn(bottomtexture,
 						 texturecolumn);
-					colfunc ();
+					R_WallColumn (bottomheight);
 					floorclip[rw_x] = mid;
 				}
 				else
@@ -673,6 +674,7 @@ void R_StoreWallRange (int start, int stop)
 // single sided line
 //
 		midtexture = texturetranslation[sidedef->midtexture];
+		midheight = textureheight[midtexture] >> FRACBITS;
 		// a single sided line is terminal, so it must mark ends
 		markfloor = markceiling = true;
 		if (linedef->flags & ML_DONTPEGBOTTOM)
@@ -761,6 +763,7 @@ void R_StoreWallRange (int start, int stop)
 		if (worldhigh < worldtop)
 		{	// top texture
 			toptexture = texturetranslation[sidedef->toptexture];
+			topheight = textureheight[toptexture] >> FRACBITS;
 			if (linedef->flags & ML_DONTPEGTOP)
 				rw_toptexturemid = worldtop;		// top of texture at top
 			else
@@ -773,6 +776,7 @@ void R_StoreWallRange (int start, int stop)
 		if (worldlow > worldbottom)
 		{	// bottom texture
 			bottomtexture = texturetranslation[sidedef->bottomtexture];
+			bottomheight = textureheight[bottomtexture] >> FRACBITS;
 			if (linedef->flags & ML_DONTPEGBOTTOM )
 			{		// bottom of texture at bottom
 				rw_bottomtexturemid = worldtop;// top of texture at top

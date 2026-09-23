@@ -421,7 +421,7 @@ If the function returns false, exit with false without checking anything else.
 boolean P_BlockLinesIterator (int x, int y, boolean(*func)(line_t*) )
 {
 	int			offset;
-	short		*list;
+	int			*list;
 	line_t		*ld;
 	
 	if (x < 0 || y < 0 || x >= bmapwidth || y >= bmapheight)

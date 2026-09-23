@@ -83,7 +83,7 @@ typedef struct line_s
 	fixed_t		dx,dy;				// v2 - v1 for side checking
 	short		flags;
 	short		special, tag;
-	short		sidenum[2];			// sidenum[1] will be -1 if one sided
+	int			sidenum[2];			// sidenum[1] will be -1 if one sided
 	fixed_t		bbox[4];
 	slopetype_t	slopetype;			// to aid move clipping
 	sector_t	*frontsector, *backsector;
@@ -430,6 +430,12 @@ extern	int				dc_yh;
 extern	fixed_t			dc_iscale;
 extern	fixed_t			dc_texturemid;
 extern	byte			*dc_source;		// first pixel in a column
+extern	int				dc_texheight;	// R_DrawColumnHeight: 0 = no wrap
+void	R_DrawColumnHeight (void);
+// Walls: the 68K drawers wrap every 128 rows (vanilla); other heights need
+// R_DrawColumnHeight or they show "tutti-frutti" / a repeated top half.
+#define R_WallColumn(h)	((h) == 128 || gHiRes == 1 ? colfunc () : \
+						 (dc_texheight = (h), R_DrawColumnHeight ()))
 
 void	R_DrawColumnMedRes (void);
 void 	R_DrawColumn (void);

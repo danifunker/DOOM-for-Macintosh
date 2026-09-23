@@ -892,11 +892,11 @@ void G_PlayerReborn (int player)
 
 	p->usedown = p->attackdown = true;		// don't do anything immediately
 	p->playerstate = PST_LIVE;      
-	p->health = MAXHEALTH;
+	p->health = deh_initial_health;		// DeHackEd
 	p->readyweapon = p->pendingweapon = wp_pistol;
 	p->weaponowned[wp_fist] = true;
 	p->weaponowned[wp_pistol] = true;
-	p->ammo[am_clip] = 50;
+	p->ammo[am_clip] = deh_initial_bullets;	// DeHackEd
 	
 	for (i=0 ; i<NUMAMMO ; i++)
 		p->maxammo[i] = maxammo[i];
@@ -1044,12 +1044,13 @@ void G_ScreenShot (void)
 }
 
 
-int pars[4][10] =
+int pars[5][10] =		// [4]: Ultimate DOOM had none (and read past the end)
 {
 {0},
 {0,30,75,120,90,165,180,180,30,165},
 {0,90,90,90,120,90,360,240,30,170},
-{0,90,45,90,150,90,90,165,30,135}
+{0,90,45,90,150,90,90,165,30,135},
+{0}
 };
 
 // DOOM II Par Times

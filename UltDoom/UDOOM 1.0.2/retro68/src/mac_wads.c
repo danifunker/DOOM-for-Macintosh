@@ -56,6 +56,7 @@ void    ST_Init(void);
 void    D_StartTitle(void);
 void    W_InitMultipleFiles(void);
 void    Z_Reset(void);
+void    W_CloseWadFiles(void);
 
 static MenuHandle sMenu;
 static Boolean    sReloadPending;
@@ -208,11 +209,7 @@ Boolean MacWads_HandleMenu(short menuID, short item)
    so each file's refnum starts a new run. */
 static void CloseWads(void)
 {
-    int i;
-
-    for (i = 0; i < numlumps; i++)
-        if (i == 0 || lumpinfo[i].handle != lumpinfo[i - 1].handle)
-            FSClose(lumpinfo[i].handle);
+    W_CloseWadFiles();
     DisposePtr((Ptr)lumpinfo);
     DisposePtr((Ptr)lumpcache);
     lumpinfo = NULL;
@@ -260,6 +257,7 @@ static void Reload(void)
     D_SetGameMission();
 
     W_InitMultipleFiles();
+    DEH_Init();
     StatusDialog(80, 20);
     M_Init();
     R_Init();

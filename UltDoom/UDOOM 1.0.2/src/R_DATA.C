@@ -190,22 +190,26 @@ will have new column_ts generated.
 void R_DrawColumnInCache (column_t *patch, byte *cache, int originy, int cacheheight)
 {
 	int			count, position;
-	byte		*source, *dest;
-	
-	dest = cache + 3;					// "dest" is never used. Why not?
+	byte		*source;
+	int			top = -1;
 	
 	while (patch->topdelta != 0xff)
 	{
-		source = ((byte *)patch) + 3;		// Why add 3? why not 2 for "byte topdelta" &
-																		// "byte		length" fields?
-		
+		// DeePsea tall patches: a topdelta not below the previous one is
+		// relative to it, for posts past row 254.
+		if ((int)patch->topdelta <= top)
+			top += patch->topdelta;
+		else
+			top = patch->topdelta;
+
+		source = ((byte *)patch) + 3;		// topdelta, length, unused pad byte
 		count = patch->length;
-		position = originy + patch->topdelta;
+		position = originy + top;
 		
 		if (position < 0)
 		{
-			count += position;		// Why doesn't "source" get incremented by -position?
-														// I tried it, it made no difference.
+			count += position;
+			source -= position;		// vanilla forgot this (misaligned patches)
 			position = 0;
 		}
 		
@@ -215,7 +219,7 @@ void R_DrawColumnInCache (column_t *patch, byte *cache, int originy, int cachehe
 		if (count > 0)
 			memcpy (cache + position, source, count);
 		
-		patch = (column_t *)( ((byte *)patch) + (patch->length + 4) );		// Why add 4?
+		patch = (column_t *)( ((byte *)patch) + (patch->length + 4) );
 	}
 }
 
@@ -777,7 +781,17 @@ int	R_FlatNumForName (char *name)
 	{
 		namet[8] = 0;
 		memcpy (namet, name, 8);
-		I_Error ("R_FlatNumForName: %s not found", namet);
+		// A missing flat quit vanilla; draw the first flat instead.
+		return 0;
+	}
+	if (i < firstflat || i > lastflat)
+	{	// a lump of that name outside F_START..F_END: look for the flat
+		int		j;
+
+		for (j = lastflat; j >= firstflat; j--)
+			if (!strncasecmp (lumpinfo[j].name, name, 8))
+				return j - firstflat;
+		return 0;
 	}
 	return i - firstflat;
 }
@@ -791,6 +805,41 @@ int	R_FlatNumForName (char *name)
 ================
 */
 
+// Texture names hashed for loading big levels: each sidedef looks up three
+// names, and a linear scan of hundreds of textures took seconds on a 68040.
+#define TEXHASHSIZE	512
+static int			texhash[TEXHASHSIZE];
+static int			*texhashnext = NULL;
+static texture_t	**texhashbuilt = NULL;		// textures[] the table is for
+
+static unsigned TexNameHash (const char *name)
+{
+	unsigned	h = 0;
+	int			i;
+
+	for (i = 0; i < 8 && name[i]; i++)
+		h = h * 31 + toupper(name[i]);
+	return h & (TEXHASHSIZE - 1);
+}
+
+static void R_BuildTextureHash (void)
+{
+	int		i, h;
+
+	if (texhashnext)
+		Z_Free (texhashnext);
+	texhashnext = Z_Malloc (numtextures * sizeof(int), PU_STATIC, NULL);
+	for (i = 0; i < TEXHASHSIZE; i++)
+		texhash[i] = -1;
+	for (i = numtextures - 1; i >= 0; i--)
+	{
+		h = TexNameHash (textures[i]->name);
+		texhashnext[i] = texhash[h];
+		texhash[h] = i;
+	}
+	texhashbuilt = textures;
+}
+
 int	R_CheckTextureNumForName (char *name)
 {
 	int		i;
@@ -798,7 +847,9 @@ int	R_CheckTextureNumForName (char *name)
 	if (name[0] == '-')		// no texture marker
 		return 0;
 	
-	for (i = 0; i < numtextures; i++)
+	if (texhashbuilt != textures)
+		R_BuildTextureHash ();
+	for (i = texhash[TexNameHash (name)]; i >= 0; i = texhashnext[i])
 		if (!strncasecmp (textures[i]->name, name, 8) )
 			return i;
 		
@@ -820,7 +871,7 @@ int	R_TextureNumForName (char *name)
 	
 	i = R_CheckTextureNumForName (name);
 	if (i == -1)
-		I_Error ("R_TextureNumForName: %s not found", name);
+		i = 0;		// vanilla quit on a missing texture; leave the wall blank
 	
 	return i;
 }

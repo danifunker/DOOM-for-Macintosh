@@ -316,9 +316,9 @@ void HU_Start(void)
   // create the map title widget
   HUlib_initTextLine(&w_title, HU_TITLEX, HU_TITLEY, hu_font, HU_FONTSTART);
   if (commercial)
-  	s = HU_TITLE2;
+  	s = (char *) DEH_String(HU_TITLE2);
   else
-  	s = HU_TITLE;
+  	s = (char *) DEH_String(HU_TITLE);
 	while (*s)
 		HUlib_addCharToTextLine(&w_title, *(s++));
 
@@ -367,7 +367,7 @@ void HU_Ticker(void)
     if ((plr->message && !message_nottobefuckedwith)
       || (plr->message && message_dontfuckwithme))
     {
-      HUlib_addMessageToSText(&w_message, 0, plr->message);
+      HUlib_addMessageToSText(&w_message, 0, (char *) DEH_String(plr->message));
       plr->message = 0;
       message_on = true;
       message_counter = HU_MSGTIMEOUT;

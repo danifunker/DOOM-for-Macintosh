@@ -222,7 +222,7 @@ boolean P_CheckAmmo (player_t *player)
 
 	ammo = weaponinfo[player->readyweapon].ammo;
 	if (player->readyweapon == wp_bfg)
-		count = BFGCELLS;
+		count = deh_bfg_cells_per_shot;
 	else if (player->readyweapon == wp_supershotgun)
 		count = 2;
 	else
@@ -606,7 +606,7 @@ void A_FireMissile (player_t *player, pspdef_t *psp)
  
 void A_FireBFG (player_t *player, pspdef_t *psp) 
 {
-	player->ammo[weaponinfo[player->readyweapon].ammo] -= BFGCELLS;
+	player->ammo[weaponinfo[player->readyweapon].ammo] -= deh_bfg_cells_per_shot;
 	P_SpawnPlayerMissile (player->mo, MT_BFG);
 }
 

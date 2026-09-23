@@ -582,6 +582,16 @@ typedef enum { mission_doom, mission_doom2, mission_tnt, mission_plut } gamemiss
 extern	gamemission_t	gamemission;
 void D_SetGameMission (void);
 
+// DeHackEd / BEX patches (retro68/src/deh.c)
+void		DEH_Init (void);				// after W_InitMultipleFiles
+const char	*DEH_String (const char *s);	// a text, or its replacement
+Boolean		DEH_IsPatchFile (const unsigned char *pname);	// .DEH / .BEX
+extern int	deh_initial_health, deh_initial_bullets, deh_max_health, deh_max_armor;
+extern int	deh_green_armor_class, deh_blue_armor_class, deh_max_soulsphere;
+extern int	deh_soulsphere_health, deh_megasphere_health, deh_god_mode_health;
+extern int	deh_idfa_armor, deh_idfa_armor_class, deh_idkfa_armor, deh_idkfa_armor_class;
+extern int	deh_bfg_cells_per_shot, deh_species_infighting;
+
 // WAD, DeHackEd and lump files that can be loaded at once (gWadFiles).
 #define MAXWADFILES		32
 

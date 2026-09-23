@@ -67,16 +67,8 @@ switchlist_t alphSwitchList[] =
 	{"\0",                  "\0",           0}
 };
 
-int             switchlist[MAXSWITCHES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+int             *switchlist = NULL;		// grows as needed (limit removal)
+static int      maxswitchlist = 0;
 int             numswitches = 0;
 button_t        *buttonlist = NULL;
 int             maxbuttons = 0;
@@ -91,44 +83,66 @@ int             maxbuttons = 0;
 ===============
 */
 
+static void P_AddSwitch (int *index, const char *name1, const char *name2)
+{
+	// Boom: skip switches whose textures this game or WAD doesn't have
+	if (R_CheckTextureNumForName((char *)name1) < 0 ||
+		R_CheckTextureNumForName((char *)name2) < 0)
+		return;
+	if (*index + 3 > maxswitchlist)		// the pair and the -1 end mark
+		switchlist = P_GrowArray(switchlist, &maxswitchlist, MAXSWITCHES * 2 + 1,
+			sizeof(*switchlist));
+	switchlist[(*index)++] = R_TextureNumForName((char *)name1);
+	switchlist[(*index)++] = R_TextureNumForName((char *)name2);
+}
+
 void P_InitSwitchList(void)
 {
 	int             i;
-	int             index;
+	int             index = 0;
 	int             episode;
+	int				lump = W_CheckNumForName ("SWITCHES");
 	
 	episode = 1;
 	if (registered)
 		episode = 2;
 	else if (commercial)
 		episode = 3;
-		
-	for (index = 0, i = 0; i < MAXSWITCHES; i++)
-	{
-		if (!alphSwitchList[i].episode)
+
+	if (!switchlist)
+		switchlist = P_GrowArray(NULL, &maxswitchlist, MAXSWITCHES * 2 + 1,
+			sizeof(*switchlist));
+
+	if (lump >= 0)
+	{	// Boom's SWITCHES lump: 20-byte records (off name, on name,
+		// little-endian episode), ending with episode 0.
+		const byte	*p = W_CacheLumpNum (lump, PU_STATIC);
+		const byte	*base = p;
+		int			len = W_LumpLength (lump);
+
+		while (p + 20 <= base + len)
 		{
-			numswitches = index / 2;
-			switchlist[index] = -1;
-			break;
+			char	name1[9], name2[9];
+			int		ep = p[18] | (p[19] << 8);
+
+			if (!ep)
+				break;
+			memcpy (name1, p, 8);		name1[8] = 0;
+			memcpy (name2, p + 9, 8);	name2[8] = 0;
+			if (ep <= episode)
+				P_AddSwitch (&index, name1, name2);
+			p += 20;
 		}
-		
-		if (alphSwitchList[i].episode <= episode)
-		{
-			#if 0
-			int		value;
-			
-			if (R_CheckTextureNumForName(alphSwitchList[i].name1) < 0)
-			{
-				I_Error("Can't find switch texture '%s'!",
-					alphSwitchList[i].name1);
-				continue;
-			}
-			value = R_TextureNumForName(alphSwitchList[i].name1);
-			#endif
-			switchlist[index++] = R_TextureNumForName(alphSwitchList[i].name1);
-			switchlist[index++] = R_TextureNumForName(alphSwitchList[i].name2);
-		}
+		Z_Free ((void *)base);
 	}
+	else
+	{
+		for (i = 0; alphSwitchList[i].episode; i++)
+			if (alphSwitchList[i].episode <= episode)
+				P_AddSwitch (&index, alphSwitchList[i].name1, alphSwitchList[i].name2);
+	}
+	numswitches = index / 2;
+	switchlist[index] = -1;
 }
 
 //==================================================================

@@ -125,6 +125,8 @@ void F_StartFinale (void)
 		}
 		S_ChangeMusic(mus_victor, true);
 	}
+	if (finaletext)
+		finaletext = (char *) DEH_String(finaletext);	// DeHackEd Text / BEX
 	
 	finalestage = 0;
 	finalecount = 0;
@@ -615,7 +617,7 @@ void F_CastDrawer (void)
 //
 	V_DrawPatchLRes (0,0,0, W_CacheLumpName ("BOSSBACK", PU_CACHE)); // HR1
 
-	F_CastPrint (castorder[castnum].name);
+	F_CastPrint ((char *) DEH_String(castorder[castnum].name));
 		
 //
 // draw the current frame in the middle of the screen

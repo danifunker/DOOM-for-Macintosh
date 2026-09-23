@@ -774,8 +774,7 @@ void P_SpawnMapThing (mapthing_t *mthing)
 			break;
 	
 	if (i==NUMMOBJTYPES)
-		I_Error ("P_SpawnMapThing: Unknown type %i at (%i, %i)",mthing->type
-		, mthing->x, mthing->y);
+		return;		// vanilla quit on an unknown thing type; skip it
 		
 // don't spawn keycards and players in deathmatch
 	if (deathmatch && mobjinfo[i].flags & MF_NOTDMATCH)

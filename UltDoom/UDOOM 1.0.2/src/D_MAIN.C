@@ -1249,6 +1249,7 @@ void D_DoomMain (void)
 	StatusParamText("\pInitializing WAD files...", "\p", "\p", "\p");
 	DrawStatusDialog(TRUE);
 	W_InitMultipleFiles ();
+	DEH_Init ();					// DEHACKED lumps and .DEH / .BEX files
 	StatusDialog(80, 14);
 	
 	//

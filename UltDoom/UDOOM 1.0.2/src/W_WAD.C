@@ -162,15 +162,18 @@ void ExtractFileBase (char *path, char *dest)
 int		reloadlump = 0;
 char	*reloadname = NULL;
 
+// The refNum of each open WAD (lumps from several files interleave once
+// the sprite and flat ranges are merged).
+static short	wadrefnums[MAXWADFILES];
+static int		numwadrefnums = 0;
+
 void W_CloseWadFiles (void)
 {
 	int i;
 	
-	// Each file's lumps share its refNum; close each file once.
-	for (i = 0; i < numlumps; i++)
-		if (lumpinfo[i].handle != -1 &&
-			(i == 0 || lumpinfo[i].handle != lumpinfo[i - 1].handle))
-			FSClose (lumpinfo[i].handle);
+	for (i = 0; i < numwadrefnums; i++)
+		FSClose (wadrefnums[i]);
+	numwadrefnums = 0;
 }
 
 void W_AddFile (int fileIndex)
@@ -205,6 +208,9 @@ void W_AddFile (int fileIndex)
 */
 	alreadyLooked = FALSE;
 	
+	if (DEH_IsPatchFile (gWadFiles[fileIndex].name))
+		return;		// DeHackEd patches are read by DEH_Init, not as lumps
+
 	fileSpec = gWadFiles[fileIndex];
 StartOver :
 	CopyPStr(fileSpec.name, tempName);
@@ -248,6 +254,9 @@ StartOver :
 			return;
 	}
 	
+	if (!reloadname && numwadrefnums < MAXWADFILES)
+		wadrefnums[numwadrefnums++] = fileRefNum;
+
 	err = GetEOF(fileRefNum, &fileEOF);
 	if (err != noErr)
 	{
@@ -482,6 +491,74 @@ void W_Reload (void)
 ====================
 */
 
+/*
+====================
+=
+= W_CoalesceMarkedResource
+=
+= From Boom (Lee Killough): moves every lump between a start marker and its
+= end marker (also the "FF_START" / "SS_START" spellings DeuTex writes) to
+= one range at the end of the directory, in load order, between one start
+= and one end marker.
+=
+====================
+*/
+
+static int IsMarker (const char *marker, const char *name)
+{
+	return !strncasecmp(name, marker, 8) ||
+		(*name == *marker && !strncasecmp(name + 1, marker, 7));
+}
+
+static void W_CoalesceMarkedResource (const char *start_marker, const char *end_marker)
+{
+	lumpinfo_t	*marked;
+	lumpinfo_t	*lump;
+	int			i, num_marked = 0, num_unmarked = 0;
+	int			is_marked = 0, mark_end = 0;
+	int			markerhandle = numlumps ? lumpinfo[0].handle : 0;
+
+	marked = (lumpinfo_t *) NewPtr((numlumps + 1) * sizeof(lumpinfo_t));
+	if (!marked)
+		I_Error ("W_CoalesceMarkedResource: out of memory");
+
+	for (i = numlumps, lump = lumpinfo; i--; lump++)
+	{
+		if (IsMarker(start_marker, lump->name))
+		{
+			if (!num_marked)
+			{
+				memset(marked, 0, sizeof(*marked));
+				strncpy(marked->name, start_marker, 8);
+				marked->handle = markerhandle;
+				num_marked = 1;
+			}
+			is_marked = 1;
+		}
+		else if (IsMarker(end_marker, lump->name))
+		{
+			mark_end = 1;
+			is_marked = 0;
+		}
+		else if (is_marked)
+			marked[num_marked++] = *lump;
+		else
+			lumpinfo[num_unmarked++] = *lump;
+	}
+
+	memcpy(lumpinfo + num_unmarked, marked, num_marked * sizeof(*marked));
+	DisposePtr((Ptr)marked);
+	numlumps = num_unmarked + num_marked;
+
+	if (mark_end)
+	{	// room was left for it (a lump or more was removed above)
+		memset(&lumpinfo[numlumps], 0, sizeof(lumpinfo_t));
+		strncpy(lumpinfo[numlumps].name, end_marker, 8);
+		lumpinfo[numlumps].handle = markerhandle;
+		numlumps++;
+	}
+}
+
 void W_InitMultipleFiles (void)
 {	
 	int		size, i;
@@ -516,6 +593,12 @@ void W_InitMultipleFiles (void)
 	
     if (!lumpcache)
       I_Error ("Couldn't allocate lumpcache");
+
+    // Boom: gather every WAD's sprites and flats between one pair of
+    // markers, so a PWAD's new sprites and flats add to the IWAD's instead
+    // of replacing the whole range (vanilla needed DeuSF for that).
+    W_CoalesceMarkedResource("S_START", "S_END");
+    W_CoalesceMarkedResource("F_START", "F_END");
 
     // killough 1/31/98: initialize lump hash table
     W_InitLumpHash();
