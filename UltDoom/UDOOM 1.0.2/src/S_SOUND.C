@@ -150,15 +150,16 @@ void S_ChangeMusic (int musicnum, int looping)
 	// stop previous.
 	S_StopMusic();
 	
-	if (gOnCD)
-		goto TryCDRom;
-	
 	// Try loading the movie from the application directory: the per-WAD
 	// :MIDI:<wad>: folders, then the original :Music: folder (mac_wads.c).
 	{
 		extern Boolean MacWads_FindMusic (const char *track, FSSpec *out);
+		extern Boolean MacWads_MidiToMovie (FSSpec *spec, const char *track);
 		if (!MacWads_FindMusic(music->name, &myFSpec))
 			goto TryCDRom;
+		// A standard MIDI file becomes a QuickTime movie (.MID!) first.
+		if (!MacWads_MidiToMovie(&myFSpec, music->name))
+			return;
 	}
 	
 	err = OpenMovieFile(&myFSpec, &fRefNum, fsCurPerm);

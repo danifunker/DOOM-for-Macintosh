@@ -162,6 +162,13 @@ pascal TimeValue GetMovieDuration(Movie theMovie) M68K_INLINE(0x702B, 0xAAAA);
 pascal void      SetMovieVolume(Movie theMovie, short volume) M68K_INLINE(0x702F, 0xAAAA);
 pascal TimeValue GetMovieTime(Movie theMovie, TimeRecord *currentTime)
                                   M68K_INLINE(0x7039, 0xAAAA);
+/* QuickTime 2.0's NewMovieFromFile does not open a standard MIDI file:
+   mac_wads.c converts it to a movie file first. */
+enum { createMovieFileDeleteCurFile = 1L << 31 };
+pascal OSErr     ConvertFileToMovieFile(const FSSpec *inputFile, const FSSpec *outputFile,
+                                  OSType creator, ScriptCode scriptTag, short *resID,
+                                  long flags, ComponentInstance userComp, void *proc,
+                                  long refCon) M68K_INLINE(0x303C, 0x1CB, 0xAAAA);
 
 /* ---- Comm Toolbox: networking is not built in this port, but the shared
    headers still name the connection handle type. ---- */

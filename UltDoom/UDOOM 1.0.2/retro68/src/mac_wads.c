@@ -344,17 +344,42 @@ void MacWads_AddArgFile(const char *name)
         strncpy(sArgFiles[sNumArgFiles++], name, 63);
 }
 
+/* Appends one line to "DOOM Music Log" next to the application.  Retro68's
+   fopen(..., "a") lost every line after the first few, so this uses the
+   File Manager directly and flushes the volume after each line. */
+static void MusicLogLine(const char *text)
+{
+    FSSpec spec;
+    short  ref;
+    long   len;
+    char   buf[256];
+    OSErr  err;
+
+    err = FSMakeFSSpec(gAppVRefNum, gAppDirId, "\pDOOM Music Log", &spec);
+    if (err == fnfErr)
+        err = FSpCreate(&spec, 'ttxt', 'TEXT', smSystemScript);
+    if (err != noErr || FSpOpenDF(&spec, fsRdWrPerm, &ref) != noErr)
+        return;
+    len = strlen(text);
+    if (len > (long)sizeof(buf) - 1)
+        len = sizeof(buf) - 1;
+    memcpy(buf, text, len);
+    buf[len++] = '\r';
+    SetFPos(ref, fsFromLEOF, 0);
+    FSWrite(ref, &len, buf);
+    FSClose(ref);
+    FlushVol(NULL, gAppVRefNum);
+}
+
 void MacWads_SetMusicLog(Boolean on)
 {
+    char line[64];
+
     sMusicLog = on;
     if (on)
     {   /* lets a crash address be mapped back to the link map */
-        FILE *f = fopen("DOOM Music Log", "a");
-        if (f)
-        {
-            fprintf(f, "MacWads_SetMusicLog at %p\n", (void *)MacWads_SetMusicLog);
-            fclose(f);
-        }
+        sprintf(line, "MacWads_SetMusicLog at %p", (void *)MacWads_SetMusicLog);
+        MusicLogLine(line);
     }
 }
 
@@ -402,13 +427,11 @@ static Boolean TryMusic(const char *folder, const char *track, FSSpec *out)
         }
         if (sMusicLog)
         {
-            FILE *f = fopen("DOOM Music Log", "a");
-            if (f)
-            {
-                p2cstr((unsigned char *)path);
-                fprintf(f, "%s -> %s\n", track, path);
-                fclose(f);
-            }
+            char line[160];
+
+            p2cstr((unsigned char *)path);
+            sprintf(line, "%s -> %s", track, path);
+            MusicLogLine(line);
         }
         return true;
     }
@@ -422,14 +445,12 @@ int  W_LumpFileIndex(int lump);
 
 static void LogMusic(const char *track, const char *what)
 {
+    char line[160];
+
     if (sMusicLog)
     {
-        FILE *f = fopen("DOOM Music Log", "a");
-        if (f)
-        {
-            fprintf(f, "%s -> %s\n", track, what);
-            fclose(f);
-        }
+        sprintf(line, "%.9s -> %.140s", track, what);
+        MusicLogLine(line);
     }
 }
 
@@ -443,6 +464,38 @@ void MacWads_LogMusicErr(const char *track, const char *what, long err)
     else
         strcpy(msg, what);
     LogMusic(track, msg);
+}
+
+/* S_ChangeMusic: QuickTime 2.0's NewMovieFromFile can't open a standard
+   MIDI file, so a 'Midi' file is converted once into a QuickTime movie
+   next to it (<track>.MID!, which the lookup prefers from then on).
+   The MIDI import comes with QuickTime Musical Instruments, which also
+   holds the instruments the music is played with. */
+Boolean MacWads_MidiToMovie(FSSpec *spec, const char *track)
+{
+    FInfo  fi;
+    FSSpec movie;
+    OSErr  err;
+
+    if (FSpGetFInfo(spec, &fi) != noErr || fi.fdType != 'Midi')
+        return true;                        /* a movie already */
+    movie = *spec;
+    if (movie.name[0] > 30)
+        return false;
+    movie.name[++movie.name[0]] = '!';
+    err = ConvertFileToMovieFile(spec, &movie, 'TVOD', smSystemScript, NULL,
+                                 createMovieFileDeleteCurFile, NULL, NULL, 0);
+    if (err != noErr)
+    {
+        FSpDelete(&movie);
+        MacWads_LogMusicErr(track, "QuickTime could not convert the MIDI file "
+                            "(QuickTime Musical Instruments installed?)", err);
+        return false;
+    }
+    FlushVol(NULL, movie.vRefNum);
+    LogMusic(track, "converted the MIDI file to a QuickTime movie");
+    *spec = movie;
+    return true;
 }
 
 /* Writes a file of type 'Midi' (QuickTime imports those). */
