@@ -2,7 +2,7 @@
 # Package the Retro68 build into a small SCSI hard-disk image with rb-cli.
 #
 #   tools/make-disk.sh [-o DOOM.hda] [-s 48M] [-w path/to/WAD ...] [-m path/to/MIDI/FOLDER ...]
-#                      [--no-shareware]
+#                      [--no-shareware] [--no-music]
 #   DOOM_ARGS="-bench -quit" tools/make-disk.sh      # also write a "DOOM Args" file
 #
 # The disk (volume "DOOM") holds the application, the music and a WAD.
@@ -25,6 +25,7 @@ size=48M
 wads=()
 midis=()
 shareware=1
+music=1
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -34,6 +35,7 @@ while [ $# -gt 0 ]; do
         -m) midis+=("$2"); shift 2 ;;
         -a) app=$2; shift 2 ;;
         --no-shareware) shareware=0; shift ;;
+        --no-music) music=0; shift ;;
         *) echo "unknown option: $1" >&2; exit 1 ;;
     esac
 done
@@ -53,11 +55,14 @@ rb new --fs hfs --size "$size" --name DOOM "$flat"
 
 python3 "$here/tools/mbrename.py" "$app" "$work/app.bin" "Ultimate DOOM"
 rb put-macbinary "$flat" "$work/app.bin"
-rb mkdir "$flat" /MIDI
-rb mkdir "$flat" /MIDI/DOOM1
-for m in "$sw"/Music/*.bin; do
-    rb put-macbinary --dst-dir /MIDI/DOOM1 "$flat" "$m"
-done
+if [ "$music" = 1 ]; then
+    rb mkdir "$flat" /MIDI
+    rb mkdir "$flat" /MIDI/DOOM1
+    for m in "$sw"/Music/*.bin; do
+        rb put-macbinary --dst-dir /MIDI/DOOM1 "$flat" "$m"
+    done
+fi
+[ ${#midis[@]} -gt 0 ] && rb mkdir "$flat" /MIDI 2>/dev/null || true
 for d in "${midis[@]}"; do
     name=$(basename "$d" | tr '[:lower:]' '[:upper:]')
     rb mkdir "$flat" "/MIDI/$name" 2>/dev/null || true

@@ -165,7 +165,21 @@ char	*reloadname = NULL;
 // The refNum of each open WAD (lumps from several files interleave once
 // the sprite and flat ranges are merged).
 static short	wadrefnums[MAXWADFILES];
+static short	wadfileindex[MAXWADFILES];		// its gWadFiles index
 static int		numwadrefnums = 0;
+
+// Which of gWadFiles a lump came from (-1 if unknown).
+int W_LumpFileIndex (int lump)
+{
+	int		i;
+
+	if (lump < 0 || lump >= numlumps)
+		return -1;
+	for (i = 0; i < numwadrefnums; i++)
+		if (lumpinfo[lump].handle == wadrefnums[i])
+			return wadfileindex[i];
+	return -1;
+}
 
 void W_CloseWadFiles (void)
 {
@@ -255,7 +269,10 @@ StartOver :
 	}
 	
 	if (!reloadname && numwadrefnums < MAXWADFILES)
+	{
+		wadfileindex[numwadrefnums] = fileIndex;
 		wadrefnums[numwadrefnums++] = fileRefNum;
+	}
 
 	err = GetEOF(fileRefNum, &fileEOF);
 	if (err != noErr)
@@ -681,7 +698,11 @@ int W_CheckNumForName(register  char *name)
   // Hash function maps the name to one of possibly numlump chains.
   // It has been tuned so that the average chain length never exceeds 2.
 
-  register int i = lumpinfo[W_LumpNameHash(name) % (unsigned) numlumps].index;
+  register int i;
+
+  if (numlumps <= 0)
+    return -1;			// no WADs yet (the splash screen plays music first)
+  i = lumpinfo[W_LumpNameHash(name) % (unsigned) numlumps].index;
 
   // We search along the chain until end, looking for case-insensitive
   // matches which also match a namespace tag. Separate hash tables are

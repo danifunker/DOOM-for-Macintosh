@@ -26,6 +26,8 @@
 #include <stdio.h>
 #include <string.h>
 
+void TCPNet_Terminate(void);
+
 #define kTCPPort        5029
 #define kMagic          0x4434          /* 'D4' */
 #define kMaxPlayers     4

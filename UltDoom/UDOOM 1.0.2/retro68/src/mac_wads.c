@@ -58,6 +58,7 @@ void    W_InitMultipleFiles(void);
 void    Z_Reset(void);
 void    W_CloseWadFiles(void);
 
+void    M_ClearMenus(void);
 static MenuHandle sMenu;
 static Boolean    sReloadPending;
 static char       sArgFiles[kMaxWadFiles][64];
@@ -413,13 +414,164 @@ static Boolean TryMusic(const char *folder, const char *track, FSSpec *out)
     return false;
 }
 
-/* Finds the music file for a track name such as "e1m1" or "runnin". */
+/* ---- Music from the WADs' own lumps ---- */
+
+unsigned char *MUS2MID(const unsigned char *mus, long muslen, long *midlen);
+int  W_LumpFileIndex(int lump);
+
+static void LogMusic(const char *track, const char *what)
+{
+    if (sMusicLog)
+    {
+        FILE *f = fopen("DOOM Music Log", "a");
+        if (f)
+        {
+            fprintf(f, "%s -> %s\n", track, what);
+            fclose(f);
+        }
+    }
+}
+
+/* Writes a file of type 'Midi' (QuickTime imports those). */
+static Boolean WriteMidi(const FSSpec *spec, const void *data, long len)
+{
+    short ref;
+    long  n = len;
+    OSErr err;
+
+    FSpDelete(spec);
+    if (FSpCreate(spec, 'TVOD', 'Midi', smSystemScript) != noErr)
+        return false;
+    if (FSpOpenDF(spec, fsRdWrPerm, &ref) != noErr)
+        return false;
+    err = FSWrite(ref, &n, data);
+    SetEOF(ref, n);
+    FSClose(ref);
+    FlushVol(NULL, spec->vRefNum);      /* keep it if the Mac crashes later */
+    if (err != noErr)
+    {
+        FSpDelete(spec);
+        return false;
+    }
+    return true;
+}
+
+/*
+ * Converts music lump "lump" to MIDI and saves it as :MIDI:<folder>:<TRACK>.MID
+ * next to the application, where it is found directly next time (and can be
+ * replaced by a better file of the same name).  If that disk can't be
+ * written, the Temporary Items folder is used.
+ */
+static Boolean ConvertMusic(int lump, const char *folder, const char *track, FSSpec *out)
+{
+    const unsigned char *data;
+    unsigned char       *mid;
+    long                 len, midlen;
+    Boolean              ok = false;
+    char                 name[64];
+    long                 dirID;
+    short                vref;
+    int                  i;
+
+    len = W_LumpLength(lump);
+    data = W_CacheLumpNum(lump, PU_STATIC);
+    if (len >= 4 && !memcmp(data, "MThd", 4))
+    {   /* some WADs already hold standard MIDI files */
+        mid = (unsigned char *) malloc(len);
+        if (mid)
+            memcpy(mid, data, len);
+        midlen = len;
+    }
+    else
+        mid = MUS2MID(data, len, &midlen);
+    Z_Free((void *)data);
+    if (!mid)
+    {
+        LogMusic(track, "lump is not MUS or MIDI");
+        return false;
+    }
+
+    sprintf(name, "%s.MID", track);
+    for (i = 0; name[i]; i++)
+        name[i] = toupper(name[i]);
+    c2pstr(name);
+
+    /* :MIDI:<folder>: next to the application, created if need be */
+    {
+        CInfoPBRec pb;
+        Str255     p;
+        long       midiDir;
+
+        memset(&pb, 0, sizeof pb);
+        strcpy((char *)p, "MIDI");
+        c2pstr((char *)p);
+        if (DirCreate(gAppVRefNum, gAppDirId, p, &midiDir) != noErr)
+        {
+            pb.dirInfo.ioNamePtr = p;
+            pb.dirInfo.ioVRefNum = gAppVRefNum;
+            pb.dirInfo.ioDrDirID = gAppDirId;
+            midiDir = (PBGetCatInfoSync(&pb) == noErr) ? pb.dirInfo.ioDrDirID : 0;
+        }
+        if (midiDir)
+        {
+            strcpy((char *)p, folder);
+            c2pstr((char *)p);
+            dirID = 0;
+            if (DirCreate(gAppVRefNum, midiDir, p, &dirID) != noErr)
+            {
+                memset(&pb, 0, sizeof pb);
+                pb.dirInfo.ioNamePtr = p;
+                pb.dirInfo.ioVRefNum = gAppVRefNum;
+                pb.dirInfo.ioDrDirID = midiDir;
+                dirID = (PBGetCatInfoSync(&pb) == noErr) ? pb.dirInfo.ioDrDirID : 0;
+            }
+            if (dirID && FSMakeFSSpec(gAppVRefNum, dirID, (unsigned char *)name, out) != nsvErr)
+                ok = WriteMidi(out, mid, midlen);
+            if (ok)
+                LogMusic(track, "saved in the MIDI folder");
+        }
+    }
+    if (!ok && FindFolder(kOnSystemDisk, kTemporaryFolderType, kCreateFolder,
+                          &vref, &dirID) == noErr &&
+        FSMakeFSSpec(vref, dirID, (unsigned char *)name, out) != nsvErr)
+        ok = WriteMidi(out, mid, midlen);
+    free(mid);
+    LogMusic(track, ok ? "converted from the WAD" : "could not write the MIDI file");
+    return ok;
+}
+
+/*
+ * Finds the music file for a track name such as "e1m1" or "runnin":
+ *
+ *   1. :MIDI:<WAD>: folders of the WADs added after (or with) the WAD whose
+ *      D_<track> lump is used, newest first;
+ *   2. that WAD's lump, when it's an added WAD: converted to MIDI;
+ *   3. the base WAD's folder, :MIDI:DOOM1: (registered DOOM's episode 1)
+ *      and the original :Music: folder;
+ *   4. the base WAD's lump, converted.
+ */
 Boolean MacWads_FindMusic(const char *track, FSSpec *out)
 {
-    char folder[64];
-    int  i;
+    char folder[64], lumpname[16];
+    int  i, lump, from;
 
-    for (i = gNumWads - 1; i >= 0; i--)
+    sprintf(lumpname, "D_%s", track);
+    lump = W_CheckNumForName(lumpname);
+    from = (lump >= 0) ? W_LumpFileIndex(lump) : -1;
+
+    for (i = gNumWads - 1; i >= 1 && i >= from; i--)
+    {
+        WadFolderName(gWadFiles[i].name, folder);
+        if (TryMusic(folder, track, out))
+            return true;
+    }
+    if (from >= 1)
+    {
+        WadFolderName(gWadFiles[from].name, folder);
+        if (ConvertMusic(lump, folder, track, out))
+            return true;
+    }
+    for (i = (from >= 1 ? from - 1 : 0); i >= 0; i--)
     {
         WadFolderName(gWadFiles[i].name, folder);
         if (TryMusic(folder, track, out))
@@ -429,15 +581,13 @@ Boolean MacWads_FindMusic(const char *track, FSSpec *out)
         return true;
     if (TryMusic(NULL, track, out))
         return true;
-    if (sMusicLog)
+    if (lump >= 0)
     {
-        FILE *f = fopen("DOOM Music Log", "a");
-        if (f)
-        {
-            fprintf(f, "%s -> not found\n", track);
-            fclose(f);
-        }
+        WadFolderName(gWadFiles[0].name, folder);
+        if (ConvertMusic(lump, folder, track, out))
+            return true;
     }
+    LogMusic(track, "not found");
     return false;
 }
 

@@ -87,6 +87,7 @@ add_application(UltimateDOOM
     src/mac_menus.c
     src/mac_wads.c
     src/deh.c
+    src/mus2mid.c
     src/Draw68K.s
     src/Blit68K.s
     rsrc/DoomShell.rsrc.bin
@@ -106,7 +107,7 @@ target_compile_options(UltimateDOOM PRIVATE
     -fno-strict-aliasing
     -fcommon
     $<$<COMPILE_LANGUAGE:C>:-include ${CMAKE_CURRENT_SOURCE_DIR}/compat/retro68_compat.h>
-    -w
+    -Wno-multichar -Wno-int-conversion -Wno-incompatible-pointer-types -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -Wno-implicit-int -Wno-return-type -Wno-overflow -Wno-attributes -Wno-builtin-declaration-mismatch -Wno-discarded-qualifiers -Wno-endif-labels -Wno-comment
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>)
 
 target_link_options(UltimateDOOM PRIVATE

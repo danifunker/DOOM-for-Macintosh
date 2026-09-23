@@ -107,6 +107,7 @@ pascal OSErr CursorDeviceNextDevice(CursorDevicePtr *ourDevice)
 #define DisposHandle        DisposeHandle
 #define DisposCTable        DisposeCTable
 #define DisposDialog        DisposeDialog
+#define DisposGDevice       DisposeGDevice
 #define GetDItem            GetDialogItem
 #define SetDItem            SetDialogItem
 #define ShowDItem           ShowDialogItem
@@ -134,6 +135,8 @@ pascal void InsXTime(QElemPtr tmTaskPtr) M68K_INLINE(0xA458);
 
 /* ---- File Manager glue (lives in mac_glue.c) ---- */
 OSErr HGetVol(StringPtr volName, short *vRefNum, long *dirID);
+OSErr DirCreate(short vRefNum, long parentDirID, ConstStr255Param directoryName,
+                long *createdDirID);
 
 /* ---- MPW and CodeWarrior compiled "\n" as a carriage return (0x0D), the
    Mac line break; GCC makes it a line feed (0x0A), which alerts draw as a box.
@@ -188,5 +191,7 @@ OSErr CMClose(ConnHandle hConn, Boolean async, void *completor, long timeout, Bo
 #define strcasecmp  doom_strcasecmp
 #define strncasecmp doom_strncasecmp
 #define strupr      doom_strupr
+int doom_strcasecmp(char *first, char *second);            /* R_DATA.C */
+int doom_strncasecmp(char *first, char *second, long len);
 
 #endif

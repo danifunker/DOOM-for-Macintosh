@@ -77,6 +77,9 @@ static Boolean  sNetJoin;               /* -join addr */
 static int      sNetSerial;             /* -serial: 1 modem port, 2 printer port */
 static int      sNetAppleTalk;          /* -appletalk N */
 
+void MacBench_SyncMenu(void);
+void M_ClearMenus(void);
+
 static void StartDemo(int n)
 {
     sprintf(sDemoName, "demo%d", n);

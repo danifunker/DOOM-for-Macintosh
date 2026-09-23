@@ -68,3 +68,15 @@ pascal void Retro68ParamText(ConstStr255Param p0, ConstStr255Param p1,
     }
     ParamText(copy[0], copy[1], copy[2], copy[3]);
 }
+
+/* DirCreate: File Manager glue Multiversal lacks (via the FSSpec call). */
+OSErr DirCreate(short vRefNum, long parentDirID, ConstStr255Param directoryName,
+                long *createdDirID)
+{
+    FSSpec spec;
+    OSErr  err = FSMakeFSSpec(vRefNum, parentDirID, directoryName, &spec);
+
+    if (err != fnfErr)
+        return err ? err : dupFNErr;        /* already there */
+    return FSpDirCreate(&spec, smSystemScript, createdDirID);
+}

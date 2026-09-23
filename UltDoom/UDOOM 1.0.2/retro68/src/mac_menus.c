@@ -13,6 +13,8 @@
 #include "LionDoom.h"
 #include "doomdef.h"
 
+void M_ClearMenus(void);
+
 #define kMultiplayerMenuID  211
 
 enum { iMPHost = 1, iMPJoin, iMPSep1, iMPSerialModem, iMPSerialPrinter, iMPSep2,
