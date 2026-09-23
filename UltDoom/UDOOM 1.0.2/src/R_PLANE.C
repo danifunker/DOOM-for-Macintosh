@@ -22,10 +22,105 @@ int			skytexturemid = 0;
 // opening
 //
 
-visplane_t		visplanes[MAXVISPLANES], *lastvisplane = NULL;
+// Limit removal: visplanes and openings grow as needed.  Vanilla DOOM
+// quit with "R_FindPlane: no more visplanes" past 128, and overwrote memory
+// when a frame needed more than MAXOPENINGS clip values.
+visplane_t		*visplanes = NULL, *lastvisplane = NULL;
 visplane_t		*floorplane = NULL, *ceilingplane = NULL;
+static int		numvisplanes = 0;
+short			*openings = NULL, *lastopening = NULL;
+static int		numopenings = 0;
 
-short			openings[MAXOPENINGS], *lastopening = NULL;
+// Visplanes with the same height, flat and light are chained by index
+// (the array moves when it grows), so R_FindPlane needn't scan them all.
+#define VISPLANEHASH	128
+static int		visplanehash[VISPLANEHASH];
+#define VPHASH(h,p,l)	((((unsigned)(h) >> 16) * 3 + (unsigned)(p) * 7 + (unsigned)(l)) & (VISPLANEHASH - 1))
+
+/*
+================
+=
+= R_GrowVisplanes
+=
+= Makes room for one more visplane.  *keep (a visplane pointer the caller
+= holds) and floorplane / ceilingplane follow the array if it moves.
+=
+================
+*/
+
+static void R_GrowVisplanes (visplane_t **keep)
+{
+	int			used = lastvisplane - visplanes;
+	int			newnum;
+	visplane_t	*n;
+
+	if (visplanes && used < numvisplanes)
+		return;
+	newnum = numvisplanes ? numvisplanes * 2 : MAXVISPLANES;
+	n = (visplane_t *) Z_Malloc(newnum * sizeof(visplane_t), PU_STATIC, NULL);
+	if (visplanes)
+	{
+		memcpy(n, visplanes, used * sizeof(visplane_t));
+		if (keep && *keep)
+			*keep = n + (*keep - visplanes);
+		if (floorplane)
+			floorplane = n + (floorplane - visplanes);
+		if (ceilingplane)
+			ceilingplane = n + (ceilingplane - visplanes);
+		Z_Free(visplanes);
+	}
+	visplanes = n;
+	lastvisplane = n + used;
+	numvisplanes = newnum;
+}
+
+/*
+================
+=
+= R_EnsureOpenings
+=
+= Makes room for "needed" more clip values.  Drawsegs keep pointers into
+= the openings (offset by -x1), so those move with the array.
+=
+================
+*/
+
+void R_EnsureOpenings (int needed)
+{
+	int			used = lastopening - openings;
+	int			newnum;
+	short		*n;
+	drawseg_t	*ds;
+	long		delta;
+
+	if (openings && used + needed <= numopenings)
+		return;
+	newnum = numopenings ? numopenings : MAXOPENINGS;
+	while (newnum < used + needed)
+		newnum *= 2;
+	n = (short *) Z_Malloc(newnum * sizeof(short), PU_STATIC, NULL);
+	if (openings)
+	{
+		memcpy(n, openings, used * sizeof(short));
+		delta = n - openings;
+		for (ds = drawsegs; ds < ds_p; ds++)
+		{
+			if (ds->maskedtexturecol + ds->x1 >= openings &&
+				ds->maskedtexturecol + ds->x1 < openings + used)
+				ds->maskedtexturecol += delta;
+			if (ds->sprtopclip + ds->x1 >= openings &&
+				ds->sprtopclip + ds->x1 < openings + used)
+				ds->sprtopclip += delta;
+			if (ds->sprbottomclip + ds->x1 >= openings &&
+				ds->sprbottomclip + ds->x1 < openings + used)
+				ds->sprbottomclip += delta;
+		}
+		Z_Free(openings);
+	}
+	openings = n;
+	lastopening = n + used;
+	numopenings = newnum;
+}
 
 //
 // clip values are the solid pixel bounding the range
@@ -180,8 +275,14 @@ void R_ClearPlanes (void)
 		ceilingclip[i] = -1;
 	}
 
+	if (!visplanes)
+		R_GrowVisplanes (NULL);
+	if (!openings)
+		R_EnsureOpenings (MAXOPENINGS);
 	lastvisplane = visplanes;
 	lastopening = openings;
+	for (i = 0; i < VISPLANEHASH; i++)
+		visplanehash[i] = -1;
 	
 //
 // texture calculation
@@ -214,19 +315,26 @@ visplane_t *R_FindPlane (fixed_t height, int picnum, int lightlevel)
 		lightlevel = 0;
 	}
 	
-	for (check=visplanes; check<lastvisplane; check++)
-		if (height == check->height
-		&& picnum == check->picnum
-		&& lightlevel == check->lightlevel)
-			break;
-			
-	if (check < lastvisplane)
-		return check;
-		
-	if (lastvisplane - visplanes == MAXVISPLANES)
-		I_Error ("R_FindPlane: no more visplanes");
-		
-	lastvisplane++;
+	{
+		int		hash = VPHASH(height, picnum, lightlevel);
+		int		i;
+
+		// The chain runs newest first; the vanilla scan found the oldest
+		// match, so take the last one in the chain.
+		check = NULL;
+		for (i = visplanehash[hash]; i >= 0; i = visplanes[i].hashnext)
+			if (height == visplanes[i].height
+			&& picnum == visplanes[i].picnum
+			&& lightlevel == visplanes[i].lightlevel)
+				check = &visplanes[i];
+		if (check)
+			return check;
+
+		R_GrowVisplanes (NULL);
+		check = lastvisplane++;
+		check->hashnext = visplanehash[hash];
+		visplanehash[hash] = check - visplanes;
+	}
 	check->height = height;
 	check->picnum = picnum;
 	check->lightlevel = lightlevel;
@@ -288,8 +396,9 @@ visplane_t *R_CheckPlane (visplane_t *pl, int start, int stop)
 		return pl;			// use the same one
 	}
 	
-// make a new visplane
-
+// make a new visplane (not hashed: R_FindPlane keeps finding the first one)
+	R_GrowVisplanes (&pl);
+	lastvisplane->hashnext = -1;
 	lastvisplane->height = pl->height;
 	lastvisplane->picnum = pl->picnum;
 	lastvisplane->lightlevel = pl->lightlevel;
@@ -358,14 +467,6 @@ void R_DrawPlanes (void)
 	int			x, stop;
 	int			angle;
 				
-#ifdef RANGECHECK
-	if (ds_p - drawsegs > MAXDRAWSEGS)
-		I_Error ("R_DrawPlanes: drawsegs overflow (%i)", ds_p - drawsegs);
-	if (lastvisplane - visplanes > MAXVISPLANES)
-		I_Error ("R_DrawPlanes: visplane overflow (%i)", lastvisplane - visplanes);
-	if (lastopening - openings > MAXOPENINGS)
-		I_Error ("R_DrawPlanes: opening overflow (%i)", lastopening - openings);
-#endif
 
 	for (pl = visplanes; pl < lastvisplane; pl++)
 	{

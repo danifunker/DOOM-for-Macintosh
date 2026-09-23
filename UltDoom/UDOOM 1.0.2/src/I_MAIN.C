@@ -102,7 +102,6 @@ extern int							gPrevCTabSeed;
 
 extern SndChannelPtr		gMacSndChannels[kMaxMacChannels];
 
-extern drawseg_t	drawsegs[MAXDRAWSEGS];
 
 extern lighttable_t	*scalelight[LIGHTLEVELS][MAXLIGHTSCALE];
 extern lighttable_t	*scalelightfixed[MAXLIGHTSCALE];
@@ -3546,7 +3545,6 @@ void main (void)
 	EventRecord	macEvent;
 	long			numCalled;
 	
-	memset(&drawsegs[0], 0, sizeof(drawseg_t) * MAXDRAWSEGS);
 	memset(&scalelight[0][0], 0, LIGHTLEVELS * MAXLIGHTSCALE * 4);
 	memset(&scalelightfixed[0], 0, MAXLIGHTSCALE * 4);
 	memset(&zlight[0][0], 0, LIGHTLEVELS * MAXLIGHTZ * 4);

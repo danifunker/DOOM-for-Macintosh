@@ -235,7 +235,8 @@ void R_InitSpriteDefs (char **namelist)
 ===============================================================================
 */
 
-vissprite_t	vissprites[MAXVISSPRITES], *vissprite_p;
+vissprite_t	*vissprites = NULL, *vissprite_p;
+static int	numvissprites = 0;
 int			newvissprite;
 
 
@@ -272,6 +273,11 @@ void R_InitSprites (char **namelist)
 
 void R_ClearSprites (void)
 {
+	if (!vissprites)
+	{
+		numvissprites = MAXVISSPRITES;
+		vissprites = (vissprite_t *) Z_Malloc(numvissprites * sizeof(vissprite_t), PU_STATIC, NULL);
+	}
 	vissprite_p = vissprites;
 }
 
@@ -288,8 +294,17 @@ vissprite_t		overflowsprite;
 
 vissprite_t *R_NewVisSprite (void)
 {
-	if (vissprite_p == &vissprites[MAXVISSPRITES])
-		return &overflowsprite;
+	if (vissprite_p == vissprites + numvissprites)
+	{	// limit removal: vanilla stopped drawing sprites after 128
+		int			used = numvissprites;
+		vissprite_t	*n = (vissprite_t *) Z_Malloc(2 * used * sizeof(vissprite_t), PU_STATIC, NULL);
+
+		memcpy(n, vissprites, used * sizeof(vissprite_t));
+		Z_Free(vissprites);
+		vissprites = n;
+		vissprite_p = vissprites + used;
+		numvissprites = 2 * used;
+	}
 	vissprite_p++;
 	return vissprite_p - 1;
 }

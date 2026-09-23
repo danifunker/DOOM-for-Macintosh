@@ -485,7 +485,28 @@ boolean P_BlockThingsIterator (int x, int y, boolean(*func)(mobj_t*) )
 ===============================================================================
 */
 
-intercept_t		intercepts[MAXINTERCEPTS], *intercept_p;
+// Limit removal: vanilla overflowed after 128 intercepts on long traces.
+intercept_t		*intercepts = NULL, *intercept_p;
+static int		numintercepts = 0;
+
+static void P_CheckIntercepts (void)
+{
+	int			used = intercept_p - intercepts;
+	intercept_t	*n;
+
+	if (intercepts && used < numintercepts)
+		return;
+	n = (intercept_t *) Z_Malloc((numintercepts ? numintercepts * 2 : MAXINTERCEPTS) *
+		sizeof(intercept_t), PU_STATIC, NULL);
+	if (intercepts)
+	{
+		memcpy(n, intercepts, used * sizeof(intercept_t));
+		Z_Free(intercepts);
+	}
+	numintercepts = numintercepts ? numintercepts * 2 : MAXINTERCEPTS;
+	intercepts = n;
+	intercept_p = n + used;
+}
 
 divline_t 	trace;
 boolean 	earlyout;
@@ -536,6 +557,7 @@ boolean PIT_AddLineIntercepts (line_t *ld)
 	if (earlyout && frac < FRACUNIT && !ld->backsector)
 		return false;	// stop checking
 	
+	P_CheckIntercepts ();
 	intercept_p->frac = frac;
 	intercept_p->isaline = true;
 	intercept_p->d.line = ld;
@@ -594,6 +616,7 @@ boolean PIT_AddThingIntercepts (mobj_t	*thing)
 	frac = P_InterceptVector (&trace, &dl);
 	if (frac < 0)
 		return true;		// behind source
+	P_CheckIntercepts ();
 	intercept_p->frac = frac;
 	intercept_p->isaline = false;
 	intercept_p->d.thing = thing;
@@ -677,6 +700,7 @@ boolean P_PathTraverse (fixed_t x1, fixed_t y1, fixed_t x2, fixed_t y2,
 	earlyout = flags & PT_EARLYOUT;
 		
 	validcount++;
+	P_CheckIntercepts ();
 	intercept_p = intercepts;
 	
 	if ( ((x1-bmaporgx)&(MAPBLOCKSIZE-1)) == 0)

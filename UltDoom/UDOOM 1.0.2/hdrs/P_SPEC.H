@@ -46,8 +46,11 @@ extern	int		levelTimeCount;
 //      Animating line specials
 //
 #define MAXLINEANIMS            64
-extern  short   numlinespecials;
-extern  line_t  *linespeciallist[MAXLINEANIMS];
+extern  int     numlinespecials;
+extern  line_t  **linespeciallist;	// grows as needed (limit removal)
+
+// Doubles a zone array of *count elements, zero-filling the new half.
+void *P_GrowArray (void *array, int *count, int initial, int elemsize);
 
 
 //      Define values for map objects
@@ -184,7 +187,8 @@ typedef struct
 #define MAXBUTTONS      16              // 4 players, 4 buttons each at once, max.
 #define BUTTONTIME      35              // 1 second
 
-extern  button_t        buttonlist[MAXBUTTONS]; 
+extern  int             maxbuttons;
+extern  button_t        *buttonlist;		// grows as needed (limit removal)
 
 void    P_ChangeSwitchTexture(line_t *line,int useAgain);
 void    P_InitSwitchList(void);
@@ -233,7 +237,8 @@ typedef struct
 #define PLATSPEED       FRACUNIT
 #define MAXPLATS        30
 
-extern  plat_t  *activeplats[MAXPLATS];
+extern  int     maxplats;
+extern  plat_t  **activeplats;		// grows as needed (limit removal)
 
 void    T_PlatRaise(plat_t      *plat);
 int             EV_DoPlat(line_t *line,plattype_e type,int amount);
@@ -376,7 +381,8 @@ typedef struct
 #define CEILWAIT                150
 #define MAXCEILINGS             30
 
-extern  ceiling_t       *activeceilings[MAXCEILINGS];
+extern  int             maxceilings;
+extern  ceiling_t       **activeceilings;	// grows as needed (limit removal)
 
 int             EV_DoCeiling (line_t *line, ceiling_e  type);
 void    T_MoveCeiling (ceiling_t *ceiling);

@@ -12,9 +12,8 @@
 
 #include "P_PLATS.PROTO.H"
 
-plat_t	*activeplats[MAXPLATS] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-			NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+plat_t	**activeplats = NULL;
+int		maxplats = 0;
 
 //==================================================================
 //
@@ -194,7 +193,7 @@ void P_ActivateInStasis(int tag)
 {
 	int		i;
 	
-	for (i = 0;i < MAXPLATS;i++)
+	for (i = 0;i < maxplats;i++)
 		if (activeplats[i] &&
 			(activeplats[i])->tag == tag &&
 			(activeplats[i])->status == in_stasis)
@@ -208,7 +207,7 @@ void EV_StopPlat(line_t *line)
 {
 	int		j;
 	
-	for (j = 0;j < MAXPLATS;j++)
+	for (j = 0;j < maxplats;j++)
 		if (activeplats[j] && ((activeplats[j])->status != in_stasis) &&
 			((activeplats[j])->tag == line->tag))
 		{
@@ -221,19 +220,22 @@ void EV_StopPlat(line_t *line)
 void P_AddActivePlat(plat_t *plat)
 {
 	int		i;
-	for (i = 0;i < MAXPLATS;i++)
+	for (i = 0;i < maxplats;i++)
 		if (activeplats[i] == NULL)
 		{
 			activeplats[i] = plat;
 			return;
 		}
-	I_Error ("P_AddActivePlat: no more plats!");
+	// limit removal: vanilla quit with "no more plats!" past 30
+	i = maxplats;
+	activeplats = P_GrowArray(activeplats, &maxplats, MAXPLATS, sizeof(*activeplats));
+	activeplats[i] = plat;
 }
 
 void P_RemoveActivePlat(plat_t *plat)
 {
 	int		i;
-	for (i = 0;i < MAXPLATS;i++)
+	for (i = 0;i < maxplats;i++)
 		if (plat == activeplats[i])
 		{
 			(activeplats[i])->sector->specialdata = NULL;

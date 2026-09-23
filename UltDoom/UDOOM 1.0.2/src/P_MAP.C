@@ -101,8 +101,10 @@ line_t		*ceilingline = NULL;
 
 #include "P_MAP.PROTO.H"
 
-line_t		*spechit[MAXSPECIALCROSS] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-				NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+// Limit removal: vanilla had room for 8 (Lion: 16) special lines crossed in
+// one move and overwrote memory past that.
+line_t		**spechit = NULL;
+int			spechit_max = 0;
 int			numspechit = 0;
 
 
@@ -299,6 +301,19 @@ boolean PIT_CheckLine (line_t *ld)
 		}
 #endif
 		
+		if (numspechit >= spechit_max)
+		{
+			int		newmax = spechit_max ? spechit_max * 2 : MAXSPECIALCROSS;
+			line_t	**n = (line_t **) Z_Malloc(newmax * sizeof(*n), PU_STATIC, NULL);
+
+			if (spechit)
+			{
+				memcpy(n, spechit, numspechit * sizeof(*n));
+				Z_Free(spechit);
+			}
+			spechit = n;
+			spechit_max = newmax;
+		}
 		spechit[numspechit] = ld;
 		numspechit++;
 	}

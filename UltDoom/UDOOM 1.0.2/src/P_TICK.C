@@ -398,10 +398,10 @@ T_PlatRaise, (plat_t: sector_t *), - active list
 	{
 		if (th->function == NULL)
 		{
-			for (i = 0; i < MAXCEILINGS;i++)
+			for (i = 0; i < maxceilings;i++)
 				if (activeceilings[i] == (ceiling_t *)th)
 					break;
-			if (i<MAXCEILINGS)
+			if (i<maxceilings)
 			{
 			#if __SAVE_DEBUG__
 				if (TRUE)

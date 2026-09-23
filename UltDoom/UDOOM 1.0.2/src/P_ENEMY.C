@@ -205,7 +205,7 @@ fixed_t yspeed[8] = {0,47000,FRACUNIT,47000,0,-47000,-FRACUNIT,-47000};
 // #define	MAXSPECIALCROSS		8
 #define MAXSPECIALCROSS			16
 
-extern	line_t		*spechit[MAXSPECIALCROSS];
+extern	line_t		**spechit;
 extern	int			 numspechit;
 
 boolean P_Move (mobj_t *actor)
@@ -1714,8 +1714,10 @@ void A_CloseShotgun2 (player_t *player, pspdef_t *psp)
 
 //=============================================================================
 
-mobj_t	*braintargets[32];
+// limit removal: vanilla overflowed past 32 spawn spots
+mobj_t	**braintargets = NULL;
 int		numbraintargets;
+static int	maxbraintargets = 0;
 int		braintargeton;
 
 void A_BrainAwake (mobj_t *mo)
@@ -1736,6 +1738,9 @@ void A_BrainAwake (mobj_t *mo)
 		m = (mobj_t *)thinker;
 		if (m->type == MT_BOSSTARGET )
 		{
+			if (numbraintargets == maxbraintargets)
+				braintargets = P_GrowArray(braintargets, &maxbraintargets, 32,
+					sizeof(*braintargets));
 			braintargets[numbraintargets] = m;
 			numbraintargets++;
 		}
@@ -1809,6 +1814,9 @@ void A_BrainSpit (mobj_t *mo)
 	if (gameskill <= sk_easy && (!easy))
 		return;
 		
+	if (!numbraintargets)		// no spawn spots: vanilla divided by zero
+		return;
+
 // shoot a cube at current target
 	targ = braintargets[braintargeton];
 	braintargeton = (braintargeton+1)%numbraintargets;

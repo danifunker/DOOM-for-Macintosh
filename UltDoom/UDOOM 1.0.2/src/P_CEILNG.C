@@ -13,12 +13,8 @@
 //==================================================================
 //==================================================================
 
-ceiling_t	*activeceilings[MAXCEILINGS] = { NULL, NULL, NULL, NULL, NULL,
-				NULL, NULL, NULL, NULL, NULL,
-				NULL, NULL, NULL, NULL, NULL,
-				NULL, NULL, NULL, NULL, NULL,
-				NULL, NULL, NULL, NULL, NULL,
-				NULL, NULL, NULL, NULL, NULL };
+ceiling_t	**activeceilings = NULL;
+int			maxceilings = 0;
 
 //==================================================================
 //
@@ -193,12 +189,17 @@ int EV_DoCeiling (line_t *line, ceiling_e  type)
 void P_AddActiveCeiling(ceiling_t *c)
 {
 	int		i;
-	for (i = 0; i < MAXCEILINGS;i++)
+	for (i = 0; i < maxceilings;i++)
 		if (activeceilings[i] == NULL)
 		{
 			activeceilings[i] = c;
 			return;
 		}
+	// limit removal: vanilla silently dropped ceilings past 30, which then
+	// could not be stopped or saved
+	i = maxceilings;
+	activeceilings = P_GrowArray(activeceilings, &maxceilings, MAXCEILINGS, sizeof(*activeceilings));
+	activeceilings[i] = c;
 }
 
 //==================================================================
@@ -210,7 +211,7 @@ void P_RemoveActiveCeiling(ceiling_t *c)
 {
 	int		i;
 	
-	for (i = 0;i < MAXCEILINGS;i++)
+	for (i = 0;i < maxceilings;i++)
 		if (activeceilings[i] == c)
 		{
 			activeceilings[i]->sector->specialdata = NULL;
@@ -229,7 +230,7 @@ void P_ActivateInStasisCeiling(line_t *line)
 {
 	int	i;
 	
-	for (i = 0;i < MAXCEILINGS;i++)
+	for (i = 0;i < maxceilings;i++)
 		if (activeceilings[i] && (activeceilings[i]->tag == line->tag) &&
 			(activeceilings[i]->direction == 0))
 		{
@@ -250,7 +251,7 @@ int	EV_CeilingCrushStop(line_t	*line)
 	int		rtn;
 	
 	rtn = 0;
-	for (i = 0;i < MAXCEILINGS;i++)
+	for (i = 0;i < maxceilings;i++)
 		if (activeceilings[i] && (activeceilings[i]->tag == line->tag) &&
 			(activeceilings[i]->direction != 0))
 		{

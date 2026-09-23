@@ -1469,12 +1469,40 @@ boolean G_WriteFile (FSSpec *file2Write, void *source, int length)
  *	"PutFile" dialog.									*
  ********************************************************/
 
+/*
+====================
+=
+= G_SaveGameBound
+=
+= Limit removal: the most a savegame of this level can take.  Vanilla used
+= a fixed 180 KB (SAVEGAMESIZE) inside a screen buffer and quit (or worse)
+= on big levels.
+=
+====================
+*/
+
+static int G_SaveGameBound (void)
+{
+	thinker_t	*th;
+	int			thinkers = 0;
+
+	for (th = thinkercap.next; th != &thinkercap; th = th->next)
+		thinkers++;
+	return VERSIONSIZE + 3 + MAXPLAYERS + 3 + 1
+		+ MAXPLAYERS * (sizeof(player_t) + 4)
+		+ numsectors * 7 * sizeof(short)
+		+ numlines * 13 * sizeof(short) + 4
+		+ thinkers * (sizeof(mobj_t) + 8)
+		+ 256;
+}
+
 void G_DoSaveGame (FSSpec *fSpec)
 {
 	char								name2[VERSIONSIZE];
 	int             		length;
 	int             		i;
 	FSSpec							fileToSave;
+	int								bound;
 	StandardFileReply		reply;
 	Str255							gamename;
 	
@@ -1507,7 +1535,8 @@ void G_DoSaveGame (FSSpec *fSpec)
 	else
 		fileToSave = *fSpec;
 	
-	save_p = savebuffer = screens[1] + 0x4000;
+	bound = G_SaveGameBound ();
+	save_p = savebuffer = Z_Malloc (bound, PU_STATIC, NULL);
 	
 	memset (name2, 0, sizeof(name2));
 	sprintf (name2, "version %i", VERSION);
@@ -1531,7 +1560,7 @@ void G_DoSaveGame (FSSpec *fSpec)
 	*save_p++ = 0x1d;               // consistancy marker
 	
 	length = save_p - savebuffer;
-	if (length > SAVEGAMESIZE)
+	if (length > bound)
 		I_Error ("Savegame buffer overrun");
 	if (G_WriteFile (&fileToSave, savebuffer, length) == true)
 	{
@@ -1545,6 +1574,8 @@ void G_DoSaveGame (FSSpec *fSpec)
 			Alert(rAlertErrGeneral, NULL);						
 	}
 	
+	Z_Free (savebuffer);
+	savebuffer = save_p = NULL;
 	savedescription[0] = 0;
 	gameaction = ga_nothing;
 	

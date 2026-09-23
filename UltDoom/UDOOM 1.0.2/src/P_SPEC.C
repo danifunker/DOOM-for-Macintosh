@@ -817,7 +817,7 @@ void P_UpdateSpecials (void)
 	//
 	//	DO BUTTONS
 	//
-	for (i = 0; i < MAXBUTTONS; i++)
+	for (i = 0; i < maxbuttons; i++)
 		if (buttonlist[i].btimer)
 		{
 			buttonlist[i].btimer--;
@@ -931,8 +931,36 @@ int EV_DoDonut(line_t *line)
 ===============================================================================
 */
 
-short	numlinespecials;
-line_t	*linespeciallist[MAXLINEANIMS];
+int		numlinespecials;
+line_t	**linespeciallist = NULL;
+static int	maxlinespecials = 0;
+
+/*
+===============
+=
+= P_GrowArray
+=
+= Limit removal for the fixed-size lists vanilla DOOM kept (plats,
+= ceilings, buttons, scrolling lines): doubles a zone array of *count
+= elements (or allocates "initial" of them), zero-filling the new part.
+=
+===============
+*/
+
+void *P_GrowArray (void *array, int *count, int initial, int elemsize)
+{
+	int		newcount = *count ? *count * 2 : initial;
+	byte	*n = (byte *) Z_Malloc(newcount * elemsize, PU_STATIC, NULL);
+
+	memset(n, 0, newcount * elemsize);
+	if (array)
+	{
+		memcpy(n, array, *count * elemsize);
+		Z_Free(array);
+	}
+	*count = newcount;
+	return n;
+}
 
 void P_SpawnSpecials (void)
 {
@@ -1023,6 +1051,9 @@ void P_SpawnSpecials (void)
 		switch(lines[i].special)
 		{
 			case 48:	// EFFECT FIRSTCOL SCROLL+
+				if (numlinespecials == maxlinespecials)
+					linespeciallist = P_GrowArray(linespeciallist, &maxlinespecials,
+						MAXLINEANIMS, sizeof(*linespeciallist));
 				linespeciallist[numlinespecials] = &lines[i];
 				numlinespecials++;
 				break;
@@ -1031,11 +1062,17 @@ void P_SpawnSpecials (void)
 	//
 	//	Init other misc stuff
 	//
-	for (i = 0;i < MAXCEILINGS;i++)
+	if (!activeceilings)
+		activeceilings = P_GrowArray(NULL, &maxceilings, MAXCEILINGS, sizeof(*activeceilings));
+	if (!activeplats)
+		activeplats = P_GrowArray(NULL, &maxplats, MAXPLATS, sizeof(*activeplats));
+	if (!buttonlist)
+		buttonlist = P_GrowArray(NULL, &maxbuttons, MAXBUTTONS, sizeof(*buttonlist));
+	for (i = 0;i < maxceilings;i++)
 		activeceilings[i] = NULL;
-	for (i = 0;i < MAXPLATS;i++)
+	for (i = 0;i < maxplats;i++)
 		activeplats[i] = NULL;
-	for (i = 0;i < MAXBUTTONS;i++)
+	for (i = 0;i < maxbuttons;i++)
 		memset(&buttonlist[i],0,sizeof(button_t));
 	
 //	P_InitSlidingDoorFrames();

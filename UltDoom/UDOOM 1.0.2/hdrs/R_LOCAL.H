@@ -143,6 +143,7 @@ typedef struct
 	unsigned short		pad3;
 	unsigned short		bottom[kHiResScreenWidth];
 	unsigned short		pad4;
+	int					hashnext;		// next visplane index in its hash chain, -1 ends
 } visplane_t;
 
 typedef struct drawseg_s
@@ -300,7 +301,8 @@ extern	boolean		markfloor;		// false if the back side is the same plane
 extern	boolean		markceiling;
 extern	boolean		skymap;
 
-extern	drawseg_t	drawsegs[MAXDRAWSEGS], *ds_p;
+extern	drawseg_t	*drawsegs, *ds_p;		// grows as needed (limit removal)
+void R_GrowDrawSegs (void);
 
 extern	lighttable_t	**hscalelight, **vscalelight, **dscalelight;
 
@@ -327,7 +329,8 @@ extern	planefunction_t		floorfunc, ceilingfunc;
 
 extern	int			skyflatnum;
 
-extern	short		openings[MAXOPENINGS], *lastopening;
+extern	short		*openings, *lastopening;	// grows as needed (limit removal)
+void R_EnsureOpenings (int needed);
 
 extern	short		floorclip[kHiResScreenWidth];
 extern	short		ceilingclip[kHiResScreenWidth];
@@ -385,7 +388,7 @@ void R_PrecacheLevel (void);
 //
 #define	MAXVISSPRITES	128
 
-extern	vissprite_t	vissprites[MAXVISSPRITES], *vissprite_p;
+extern	vissprite_t	*vissprites, *vissprite_p;	// grows as needed (limit removal)
 extern	vissprite_t	vsprsortedhead;
 
 // constant arrays used for psprite clipping and initializing clipping

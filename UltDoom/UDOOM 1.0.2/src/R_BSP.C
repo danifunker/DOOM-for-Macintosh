@@ -12,7 +12,40 @@ side_t		*sidedef = NULL;
 line_t		*linedef = NULL;
 sector_t	*frontsector = NULL, *backsector = NULL;
 
-drawseg_t	drawsegs[MAXDRAWSEGS], *ds_p = NULL;
+drawseg_t	*drawsegs = NULL, *ds_p = NULL;
+static int	numdrawsegs = 0;
+
+/*
+====================
+=
+= R_GrowDrawSegs
+=
+= Limit removal: vanilla DOOM stopped adding walls after 256 drawsegs,
+= leaving holes in wide open maps.  Called when ds_p reaches the end.
+=
+====================
+*/
+
+int R_DrawSegsFull (void)
+{
+	return ds_p == drawsegs + numdrawsegs;
+}
+
+void R_GrowDrawSegs (void)
+{
+	int			newnum = numdrawsegs ? numdrawsegs * 2 : MAXDRAWSEGS;
+	drawseg_t	*newsegs = (drawseg_t *) Z_Malloc(newnum * sizeof(drawseg_t), PU_STATIC, NULL);
+	int			used = ds_p - drawsegs;
+
+	if (drawsegs)
+	{
+		memcpy(newsegs, drawsegs, used * sizeof(drawseg_t));
+		Z_Free(drawsegs);
+	}
+	drawsegs = newsegs;
+	ds_p = drawsegs + used;
+	numdrawsegs = newnum;
+}
 
 void R_StoreWallRange (int start, int stop);
 
@@ -26,6 +59,8 @@ void R_StoreWallRange (int start, int stop);
 
 void R_ClearDrawSegs (void)
 {
+	if (!drawsegs)
+		R_GrowDrawSegs ();
 	ds_p = drawsegs;
 }
 

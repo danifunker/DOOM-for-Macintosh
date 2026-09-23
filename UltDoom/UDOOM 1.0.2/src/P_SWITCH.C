@@ -78,14 +78,8 @@ int             switchlist[MAXSWITCHES * 2] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 					0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 					0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 int             numswitches = 0;
-button_t        buttonlist[MAXBUTTONS] = { { NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL },
-					{ NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL },
-					{ NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL },
-					{ NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL },
-					{ NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL },
-					{ NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL },
-					{ NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL },
-					{ NULL, 0, 0, 0, NULL }, { NULL, 0, 0, 0, NULL } };
+button_t        *buttonlist = NULL;
+int             maxbuttons = 0;
 
 /*
 ===============
@@ -149,11 +143,11 @@ void P_StartButton (line_t *line,bwhere_e w,int texture,int time)
 	//
 	// See if button is already pressed
 	//
-	for (i = 0;i < MAXBUTTONS;i++)
+	for (i = 0;i < maxbuttons;i++)
 		if (buttonlist[i].btimer && buttonlist[i].line == line)
 			return;
 	
-	for (i = 0;i < MAXBUTTONS;i++)
+	for (i = 0;i < maxbuttons;i++)
 		if (!buttonlist[i].btimer)
 		{
 			buttonlist[i].line = line;
@@ -164,7 +158,14 @@ void P_StartButton (line_t *line,bwhere_e w,int texture,int time)
 			return;
 		}
 		
-	I_Error("P_StartButton: no button slots left!");
+	// limit removal: vanilla quit with "no button slots left!" past 16
+	i = maxbuttons;
+	buttonlist = P_GrowArray(buttonlist, &maxbuttons, MAXBUTTONS, sizeof(*buttonlist));
+	buttonlist[i].line = line;
+	buttonlist[i].where = w;
+	buttonlist[i].btexture = texture;
+	buttonlist[i].btimer = time;
+	buttonlist[i].soundorg = (mobj_t *)&line->frontsector->soundorg;
 }
 
 //==================================================================

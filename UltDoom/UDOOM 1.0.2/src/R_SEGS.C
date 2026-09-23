@@ -583,8 +583,13 @@ void R_StoreWallRange (int start, int stop)
 	fixed_t		vtop;
 	int			lightnum;
 
-	if (ds_p == &drawsegs[MAXDRAWSEGS])
-		return;		// don't overflow and crash
+	{	// limit removal: grow the drawseg and opening arrays instead of
+		// dropping walls (drawsegs) or overwriting memory (openings)
+		extern int R_DrawSegsFull (void);
+		if (R_DrawSegsFull ())
+			R_GrowDrawSegs ();
+		R_EnsureOpenings (3 * (stop - start + 1));
+	}
 		
 #ifdef RANGECHECK
 	if (start >=viewwidth || start > stop)
