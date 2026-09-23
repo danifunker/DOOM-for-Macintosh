@@ -427,7 +427,7 @@ ticcmd_t *I_BaseTiccmd (void)
 		return (temp);
 	}
 
-#else
+#elif !defined(MAC_GCC68K_H)		// Retro68 build: inline version in mac_gcc68k.h
 
 	// 68K Version
 

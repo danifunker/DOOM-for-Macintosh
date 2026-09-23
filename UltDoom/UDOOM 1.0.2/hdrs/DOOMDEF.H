@@ -672,7 +672,9 @@ extern	think_t		gT_StrobeFlashPtr;
 extern	think_t		gT_GlowPtr;
 extern	think_t		gT_PlatRaisePtr;
 
-#ifdef __MAC_VERSION__
+#if defined(__MAC_VERSION__) && defined(__GNUC__) && defined(__m68k__)
+	#include "mac_gcc68k.h"		// Retro68: inline 68020+ fixed math and byte swaps
+#elif defined(__MAC_VERSION__)
 extern Handle 		gFixedMulHndl; 			// Handle to fixed multiplication  code resource
 extern Handle 		gFixedDivHndl; 			// Handle to fixed multiplication  code resource
 
@@ -778,7 +780,9 @@ idiv ebx			SignedDivision				-edx:eax is divided by ebx
 	modify exact [eax edx]
 #endif
 
-#ifdef __BIG_ENDIAN__
+#if defined(MAC_GCC68K_H)
+	// SHORT/LONG come from mac_gcc68k.h
+#elif defined(__BIG_ENDIAN__)
 	#if defined(powerc) || defined (__powerc)
 		short 				SwapSHORT (unsigned short);
 		unsigned long 		SwapLONG (unsigned long);

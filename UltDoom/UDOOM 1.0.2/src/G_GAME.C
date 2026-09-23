@@ -1709,7 +1709,9 @@ void G_InitNew (skill_t skill, int episode, int map)
 
 #define DEMOMARKER      0x80
 
+#ifndef __GNUC__
 extern int atoi (char *c);
+#endif
 
 void G_ReadDemoTiccmd (ticcmd_t *cmd)
 {

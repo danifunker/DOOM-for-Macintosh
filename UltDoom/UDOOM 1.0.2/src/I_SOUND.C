@@ -75,6 +75,19 @@ TMInfo		tm;
 		PrimeTime((QElemPtr)&tm, v35hzDelay);
 	}
 	
+#elif defined(__GNUC__)
+
+	// For 68K, Retro68: globals are at absolute (load-time relocated)
+	// addresses, so the interrupt needs neither A1 nor an A5 switch.
+
+	void ServiceTimer (void);
+
+	void ServiceTimer (void)
+	{
+		ticcount++;
+		PrimeTime((QElemPtr)&tm, -28571L);
+	}
+
 #else
 
 	// For 68K

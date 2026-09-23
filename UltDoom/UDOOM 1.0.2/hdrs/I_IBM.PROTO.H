@@ -1,7 +1,9 @@
 
 /* I_IBM.C */
 ticcmd_t *I_BaseTiccmd(void);
+#ifndef MAC_GCC68K_H
 fixed_t FixedDiv(fixed_t d1, fixed_t d2);
+#endif
 int I_GetTime(void);
 void I_SetPalette(byte *palette);
 void PPCBlit320(void *srcPtr, void *dstPtr, int rowBytes, int height);

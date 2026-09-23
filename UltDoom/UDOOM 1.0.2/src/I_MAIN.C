@@ -132,7 +132,7 @@ Str255								gStr1;
 
 Boolean								gLoadGamePending = FALSE;
 
-FSSpec								gPendingGame = {0,0,"\p"};
+FSSpec								gPendingGame = {0,0,"\000"};
 
 Boolean								gInitialLoadGame = TRUE;
 
@@ -1037,9 +1037,9 @@ void AppendPStr (void *src, void *endstr)
 
 pascal Boolean FilterInDoom(CInfoPBPtr pb)
 {
-	Str255 doom2	= "\pDOOM2.WAD";
-	Str255 doom1	= "\pDOOM1.WAD";
-	Str255 doom 	= "\pDOOM.WAD";
+	Str255 doom2	= "\011DOOM2.WAD";
+	Str255 doom1	= "\011DOOM1.WAD";
+	Str255 doom 	= "\010DOOM.WAD";
 	
 	if (pb->hFileInfo.ioFlAttrib & 0x0010)
 	{
@@ -1172,9 +1172,9 @@ void InitManagers (void)
 								
 								if (reply.sfGood)
 								{
-									Str255 doom2	= "\pDOOM2.WAD";
-									Str255 doom1	= "\pDOOM1.WAD";
-									Str255 doom 	= "\pDOOM.WAD";
+									Str255 doom2	= "\011DOOM2.WAD";
+									Str255 doom1	= "\011DOOM1.WAD";
+									Str255 doom 	= "\010DOOM.WAD";
 									
 									gWadFiles[0] = reply.sfFile;
 									
@@ -1507,7 +1507,7 @@ void CloseStatusDialog (void)
 
 void StatusParamText(char *one, char *two, char *three, char *four)
 {
-	Str255		numStr = "\p2 Players";
+	Str255		numStr = "\0112 Players";
 	short			center, strLen;
 	GrafPtr			oldPort;
 	Rect				r;
@@ -1733,7 +1733,7 @@ void DialogLoadWad(DialogPtr dlg)
  ********************************************************/
 void UpdateLoadGameString(Rect *r)
 {
-		Str255		nameStr = "\p";
+		Str255		nameStr = "\000";
 		long			len;
 		
 		TextFont(geneva);

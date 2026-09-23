@@ -1,0 +1,5 @@
+/* Retro68 stand-in for the CodeWarrior precompiled Toolbox header. */
+#ifndef RETRO68_DGMACHEADERS68K
+#define RETRO68_DGMACHEADERS68K
+#include "retro68_compat.h"
+#endif
