@@ -1800,6 +1800,14 @@ void HandleMenu (short menuId, short menuItem)
 					break;
 			}
 			break;
+		default :	// Retro68 build: Benchmark submenu, Multiplayer menu
+		{
+			extern Boolean MacBench_HandleSubmenu (short menuID, short item);
+			extern Boolean MacMenus_Handle (short menuID, short item);
+			if (!MacBench_HandleSubmenu(menuId, menuItem))
+				(void) MacMenus_Handle(menuId, menuItem);
+			break;
+		}
 	}
 	
 	HiliteMenu(0);

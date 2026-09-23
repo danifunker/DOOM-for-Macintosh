@@ -1,10 +1,12 @@
 /*
  * Frame-rate display and built-in benchmark for the Retro68 build.
  *
- * Adds two items (after a separator) to the end of the Control menu:
+ * Adds to the end of the Control menu:
  *
- *     Show Frame Rate    (Cmd-F)  toggles Lion's on-screen FPS counter (also 'Q')
- *     Run Benchmark      (Cmd-B)  plays demo1..demo3 as timedemos
+ *     Show Frame Rate    (Cmd-F)  toggles Lion's on-screen FPS counter (also 'Q');
+ *                                 runtime only, starts off (or on with -fps)
+ *     Benchmark  >  All Demos (Cmd-B) / demo1 / demo2 / demo3
+ *                                 plays those demos as timedemos
  *
  * A timedemo runs exactly one game tic per rendered frame (singletics) as
  * fast as the machine can go, the way "doom -timedemo demoN" does on the PC.
@@ -53,8 +55,12 @@ extern gameaction_t gameaction;
 extern boolean  advancedemo;
 extern char     gTCPHostAddr[64];
 
+#define kBenchMenuID    210
+enum { iBenchAll = 1, iBenchSep, iBenchDemo1 };
+
 static short    sFrameRateItem;
-static short    sBenchItem;
+static MenuHandle sBenchMenu;
+static Boolean  sArgFPS;                /* -fps in DOOM Args */
 static int      sDemoIndex;             /* 1-based demo being timed, 0 = idle */
 static int      sTics[kBenchDemos + 1];
 static int      sRealTics[kBenchDemos + 1];
@@ -76,19 +82,31 @@ static void StartDemo(int n)
     singletics = true;
     defdemoname = sDemoName;
     advancedemo = false;            /* don't let the attract loop override it */
+    M_ClearMenus();                 /* close DOOM's menu if it was open */
     gameaction = ga_playdemo;
 }
 
 void MacBench_InstallMenu(void)
 {
     MenuHandle m = GetMHandle(mControlMenu);
+    short      item;
+
+    gFrameRateOn = sArgFPS;
 
     AppendMenu(m, "\p(-");
     AppendMenu(m, "\pShow Frame Rate/F");
     sFrameRateItem = CountMItems(m);
-    AppendMenu(m, "\pRun Benchmark (timedemo)/B");
-    sBenchItem = CountMItems(m);
-    SetItemMark(m, sFrameRateItem, gFrameRateOn ? checkMark : noMark);
+
+    /* Benchmark > hierarchical submenu */
+    sBenchMenu = NewMenu(kBenchMenuID, "\pBenchmark");
+    AppendMenu(sBenchMenu, "\pAll Demos/B;(-;demo1;demo2;demo3");
+    InsertMenu(sBenchMenu, -1);                 /* -1: hierarchical */
+    AppendMenu(m, "\pBenchmark");
+    item = CountMItems(m);
+    SetItemCmd(m, item, 0x1B);                  /* hMenuCmd: has a submenu */
+    SetItemMark(m, item, kBenchMenuID);
+
+    MacBench_SyncMenu();
 }
 
 void MacBench_SyncMenu(void)
@@ -96,6 +114,13 @@ void MacBench_SyncMenu(void)
     if (sFrameRateItem)
         SetItemMark(GetMHandle(mControlMenu), sFrameRateItem,
                     gFrameRateOn ? checkMark : noMark);
+    if (sBenchMenu)
+    {
+        if (netgame)
+            DisableItem(sBenchMenu, 0);         /* no timedemos in a net game */
+        else
+            EnableItem(sBenchMenu, 0);
+    }
 }
 
 /* Returns true when the item belonged to us. */
@@ -107,17 +132,27 @@ Boolean MacBench_HandleMenu(short item)
         MacBench_SyncMenu();
         return true;
     }
-    if (item == sBenchItem && item != 0)
-    {
-        if (sDemoIndex == 0)
-        {
-            sFirstDemo = 1;
-            sLastDemo = kBenchDemos;
-            StartDemo(1);
-        }
-        return true;
-    }
     return false;
+}
+
+/* Benchmark submenu.  Returns true when the menu was ours. */
+Boolean MacBench_HandleSubmenu(short menuID, short item)
+{
+    if (menuID != kBenchMenuID)
+        return false;
+    if (sDemoIndex != 0 || netgame)
+        return true;
+    if (item == iBenchAll)
+    {
+        sFirstDemo = 1;
+        sLastDemo = kBenchDemos;
+    }
+    else if (item >= iBenchDemo1 && item < iBenchDemo1 + kBenchDemos)
+        sFirstDemo = sLastDemo = item - iBenchDemo1 + 1;
+    else
+        return true;
+    StartDemo(sFirstDemo);
+    return true;
 }
 
 /* fps * 10, rounded, from tics rendered over 35 Hz real tics. */
@@ -248,7 +283,7 @@ void MacBench_ReadArgs(void)
     while (fscanf(f, "%31s", word) == 1)
     {
         if (!strcmp(word, "-fps"))
-            gFrameRateOn = true;
+            sArgFPS = true;
         else if (!strcmp(word, "-quit"))
             sAutoQuit = true;
         else if (!strcmp(word, "-bench"))

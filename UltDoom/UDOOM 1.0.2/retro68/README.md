@@ -89,7 +89,16 @@ costs or VRAM speed, so use it for before/after comparisons, not absolute number
 
 ## Multiplayer
 
-Choose **New Game → Multiplayer**. Under **Connect via**:
+Use the **Multiplayer** menu at any time (it's greyed out while a network game is
+running):
+
+- **Host TCP/IP Game…** / **Join TCP/IP Game…**
+- **Serial Game (Modem Port)…** / **Serial Game (Printer Port)…**
+- **AppleTalk Game…**
+
+Each opens the multiplayer setup dialog with that connection chosen. **Start Game**
+leaves whatever is running (demo or single-player game) and starts the network game.
+The same dialog is also offered at launch. Under **Connect via**:
 
 | Transport | Players | Notes |
 | --- | --- | --- |
@@ -131,11 +140,12 @@ Tested in QEMU:
 The **Control** menu has two new items:
 
 - **Show Frame Rate (⌘F)** toggles an FPS counter (a rolling average over 64 frames)
-  in the top-left of the view. The **Q** key also toggles it.
-- **Run Benchmark (⌘B)** plays `demo1`, `demo2` and `demo3` as timedemos: one game
-  tic per rendered frame, as fast as the machine can draw, like PC `-timedemo`. The
-  result is shown in an alert and appended to **DOOM Benchmark Log** next to the
-  application.
+  in the top-left of the view. The **Q** key also toggles it. The setting isn't saved:
+  the counter starts off each launch unless `DOOM Args` contains `-fps`.
+- **Benchmark ▸ All Demos (⌘B) / demo1 / demo2 / demo3** plays those demos as
+  timedemos: one game tic per rendered frame, as fast as the machine can draw, like PC
+  `-timedemo`. The result is shown in an alert and appended to **DOOM Benchmark Log**
+  next to the application.
 
 For unattended runs, create a text file called **DOOM Args** next to the
 application containing any of:

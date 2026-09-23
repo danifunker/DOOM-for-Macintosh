@@ -44,6 +44,11 @@
 #ifndef USESROUTINEDESCRIPTORS
 #define USESROUTINEDESCRIPTORS 0
 #endif
+/* Multiversal declares these as _MixedModeDispatch traps, which classic 68K
+   systems don't implement ("unimplemented trap").  Apple's 68K headers made
+   them plain casts / no-ops; do the same. */
+#define NewRoutineDescriptor(proc, info, isa)   ((UniversalProcPtr)(proc))
+#define DisposeRoutineDescriptor(upp)           ((void)(upp))
 typedef ProcPtr Register68kProcPtr;
 enum { kSpecialCaseProtocolHandler = 7, kSpecialCaseSocketListener = 8 };
 typedef const unsigned char *ConstStr32Param;

@@ -2400,27 +2400,94 @@ static void TCPShowItems (DialogPtr dlg)
 	InvalRect(&r);
 }
 
+/* Shows the dialog items that belong to connection method conn. */
+static void ConnectShowItems (DialogPtr dlg, short conn)
+{
+	// Handle num players
+	if (conn == iConnectIPX || conn == iConnectAppleTalk)
+	{
+		ShowDItem(dlg, iMultiplayerPlayersLabel);
+		ShowDItem(dlg, iMultiplayerPlayers);
+	}
+	else
+	{
+		HideDItem(dlg, iMultiplayerPlayersLabel);
+		HideDItem(dlg, iMultiplayerPlayers);
+	}
+
+	// Handle socket
+	if (conn == iConnectIPX)
+	{
+		ShowDItem(dlg, iMultiplayerSocketLabel);
+		ShowDItem(dlg, iMultiplayerSocket);
+	}
+	else
+	{
+		HideDItem(dlg, iMultiplayerSocketLabel);
+		HideDItem(dlg, iMultiplayerSocket);
+	}
+
+	// Handle initiate
+	if (conn == iConnectCTB)
+		ShowDItem(dlg, iMultiplayerInitiate);
+	else
+		HideDItem(dlg, iMultiplayerInitiate);
+
+	if (conn == iConnectTCP)
+		TCPShowItems(dlg);
+
+	if (conn == iConnectSerialModem)
+		gSerialPort = 1;
+	else if (conn == iConnectSerialPrinter)
+		gSerialPort = 2;
+}
+
+/*
+ * Which connection the dialog opens with; the Multiplayer menu sets it
+ * (0: TCP/IP, hosting).
+ */
+short			gMPPreset = 0;
+enum { kMPHostTCP = 1, kMPJoinTCP, kMPSerialModem, kMPSerialPrinter, kMPAppleTalk };
+
+/* The popup CDEF's private data (Universal Interfaces Controls.h). */
+typedef struct { MenuHandle mHandle; short mID; } PopupPrivateData, **PopupPrivateDataHandle;
+
 static void TCPSetupDialog (DialogPtr dlg)
 {
-	MenuHandle	m = GetMHandle(550);
+	MenuHandle	m;
 	short		kind, i;
 	Handle		h;
 	Rect		r;
 
+	// The popup's menu isn't in the menu list outside of tracking, so take
+	// it from the control itself.
+	GetDItem(dlg, iMultiplayerConnect, &kind, &h, &r);
+	m = (**(PopupPrivateDataHandle)(**(ControlHandle)h).contrlData).mHandle;
 	if (m == NULL)
 		return;
 	if (CountMItems(m) < iConnectTCP)
-		AppendMenu(m, "\pTCP/IP");
+	{	// AppendMenu would read the "/" as a command key; set the text after
+		AppendMenu(m, "\px");
+		SetMenuItemText(m, iConnectTCP, "\pTCP/IP");
+		EnableItem(m, iConnectTCP);
+	}
 	// Transports not built into this port yet.
 	DisableItem(m, iConnectCTB);
 	DisableItem(m, iConnectIPX);
 
 	GetDItem(dlg, iMultiplayerConnect, &kind, &h, &r);
 	SetControlMaximum((ControlHandle)h, iConnectTCP);
-	SetControlValue((ControlHandle)h, iConnectTCP);
 
-	gKeyPlayer = true;
-	TCPShowItems(dlg);
+	gKeyPlayer = gMPPreset != kMPJoinTCP;
+	switch (gMPPreset)
+	{
+		case kMPSerialModem:	i = iConnectSerialModem;	break;
+		case kMPSerialPrinter:	i = iConnectSerialPrinter;	break;
+		case kMPAppleTalk:		i = iConnectAppleTalk;		break;
+		default:				i = iConnectTCP;			break;
+	}
+	SetControlValue((ControlHandle)h, i);
+	ConnectShowItems(dlg, i);
 }
 
 /********************************************************
@@ -2854,52 +2921,7 @@ short MultiplayerOptionsDialog (void)
 			case iMultiplayerConnect:
 					GetDItem(dlg, iMultiplayerConnect, &kind, &h, &r);
 					itm = GetCtlValue((ControlHandle) h);
-
-					// Handle num players
-					if (itm == iConnectIPX || itm == iConnectAppleTalk)
-					{
-						ShowDItem(dlg, iMultiplayerPlayersLabel);
-						ShowDItem(dlg, iMultiplayerPlayers);
-					}
-					else
-					{
-						HideDItem(dlg, iMultiplayerPlayersLabel);
-						HideDItem(dlg, iMultiplayerPlayers);
-					}
-					
-					// Handle socket
-					if (itm == iConnectIPX)
-					{
-						ShowDItem(dlg, iMultiplayerSocketLabel);
-						ShowDItem(dlg, iMultiplayerSocket);
-					}
-					else
-					{
-						HideDItem(dlg, iMultiplayerSocketLabel);
-						HideDItem(dlg, iMultiplayerSocket);
-					}
-
-					// Handle initiate
-					if (itm == iConnectCTB)
-					{
-						ShowDItem(dlg, iMultiplayerInitiate);
-					}
-					else
-					{
-						HideDItem(dlg, iMultiplayerInitiate);
-					}
-					
-					if (itm == iConnectTCP)
-						TCPShowItems(dlg);
-
-					if (itm == iConnectSerialModem)
-					{
-						gSerialPort = 1;
-					}
-					else if (itm == iConnectSerialPrinter)
-					{
-						gSerialPort = 2;
-					}
+					ConnectShowItems(dlg, itm);
 		}
 
 	}
@@ -3759,7 +3781,11 @@ void main (void)
 		
 		{
 			extern void MacBench_InstallMenu (void);
-			MacBench_InstallMenu ();		// Show Frame Rate / Run Benchmark
+			extern void MacMenus_Install (void);
+			extern void MacMenus_Sync (void);
+			MacBench_InstallMenu ();		// Show Frame Rate / Benchmark
+			MacMenus_Install ();			// Multiplayer menu
+			MacMenus_Sync ();		// Show Frame Rate / Run Benchmark
 		}
 		
 		D_DoomMain();

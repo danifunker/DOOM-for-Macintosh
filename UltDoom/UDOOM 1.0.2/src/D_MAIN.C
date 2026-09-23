@@ -571,6 +571,9 @@ void D_DoomLoop (void)
 	while (TRUE)
 	{
 		extern int		gJustLoaded;
+		extern void		MacMenus_Poll (void);
+		
+		MacMenus_Poll ();			// Multiplayer menu: start a net game here
 		
 		if (singletics)
 		{
