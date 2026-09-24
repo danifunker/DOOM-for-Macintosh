@@ -1739,6 +1739,13 @@ void HandleMenu (short menuId, short menuItem)
 		break;
 	
 		case mControlMenu : // Control menu
+			// Retro68: the F-key items below are ignored by M_Responder while
+			// DOOM's menu is open, which is how the mouse reaches the menu bar.
+			if (menuactive && menuItem >= iControlHelp && menuItem <= iControlView)
+			{
+				extern void M_ClearMenus (void);
+				M_ClearMenus ();
+			}
 			switch (menuItem)
 			{
 				case iControlSet : // Set Controls
