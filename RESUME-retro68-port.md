@@ -50,7 +50,7 @@ fresh overlay on `~/MacOS9-2-2 UTM.qcow2`, never write that file; app + WAD on a
 ARGS="-bench"). The user's real G4 runs OS 9.2.2 natively; the 68K build got ~18 fps there.
 Next for the G4: native PowerPC speed work (no asm drawers yet), and switching the display to
 640x480 (their screen is 1280x854 and the game sits small in the middle).
-Download page for the G4: ~/doom-mac-testenv/www (refresh.sh), http://192.168.99.153:8068/.
+Download page for the G4: ~/doom-mac-testenv/www (refresh.sh), http://192.168.99.153:8000/doom/ (shared server).
 
 Waiting on the user: Quadra results (benchmark ⌘B numbers at large/small graphics, low detail;
 real-hardware FPS was ~12.4 with the counter), whether the demo1 crash is gone.
