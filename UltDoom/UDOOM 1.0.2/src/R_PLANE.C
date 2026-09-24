@@ -31,6 +31,15 @@ static int		numvisplanes = 0;
 short			*openings = NULL, *lastopening = NULL;
 static int		numopenings = 0;
 
+// WAD reload (mac_wads.c) empties the zone these arrays live in.
+void R_ForgetPlanes (void)
+{
+	visplanes = lastvisplane = floorplane = ceilingplane = NULL;
+	numvisplanes = 0;
+	openings = lastopening = NULL;
+	numopenings = 0;
+}
+
 // Visplanes with the same height, flat and light are chained by index
 // (the array moves when it grows), so R_FindPlane needn't scan them all.
 #define VISPLANEHASH	128
@@ -425,6 +434,16 @@ visplane_t *R_CheckPlane (visplane_t *pl, int start, int stop)
 
 void R_MakeSpans (int x, int t1, int b1, int t2, int b2)
 {
+	// An empty column has top 0xFFFF and a bottom left over from whatever
+	// the visplane's memory held.  Lion's visplanes were zero-filled static
+	// data, so that was 0; grown in the zone it can be 0xFFFF too, and then
+	// row 65535 was drawn (a bus error in R_DrawSpan*) or spanstart[65535]
+	// written.  Empty columns get bottom 0.
+	if (t1 == 0xFFFF)
+		b1 = 0;
+	if (t2 == 0xFFFF)
+		b2 = 0;
+
 	while (t1 < t2 && t1<=b1)
 	{
 		R_MapPlane (t1, spanstart[t1], x - 1);

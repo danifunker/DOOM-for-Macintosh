@@ -294,6 +294,10 @@ static void Reload(void)
 
     CloseWads();
     Z_Reset();
+    {   /* limit-removal arrays lived in the zone too */
+        extern void P_ForgetZoneArrays(void);
+        P_ForgetZoneArrays();
+    }
     for (i = 1; i < NUMSFX; i++)
     {   /* cached sound lumps lived in the zone; lump numbers may change */
         S_sfx[i].data = NULL;
@@ -309,6 +313,12 @@ static void Reload(void)
     StatusDialog(80, 20);
     M_Init();
     R_Init();
+    {   /* I_SetPalette maps the colormaps to the Mac palette (black and white
+           swapped) once; R_Init has just loaded them again */
+        extern short remapped;
+        remapped = 0;
+        I_SetPalette(W_CacheLumpName("PLAYPAL", PU_CACHE));
+    }
     StatusDialog(80, 60);
     P_Init();
     HU_Init();

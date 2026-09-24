@@ -615,7 +615,7 @@ void I_SetPalette (byte *palette)
 		}
 		
 		if (pixelSize == 8)
-			SetEntries(0, 255, (**ctab).ctTable);
+			MacSetEntries(0, 255, ctab);
 	}
 }
 
@@ -1080,7 +1080,7 @@ void I_FinishUpdate (void)
 			pixelSize = 0;
 			
 		if (pixelSize == 8)
-			SetEntries(0, 255, (**ctab).ctTable);
+			MacSetEntries(0, 255, ctab);
 		
 	}
 
@@ -1121,7 +1121,7 @@ void I_FinishUpdate (void)
 			pixelSize = 0;
 			
 		if (pixelSize == 8)
-			SetEntries(0, 255, (**ctab).ctTable);
+			MacSetEntries(0, 255, ctab);
 	}
 	
 	

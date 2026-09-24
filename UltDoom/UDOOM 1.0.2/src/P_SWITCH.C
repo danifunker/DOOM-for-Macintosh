@@ -73,6 +73,14 @@ int             numswitches = 0;
 button_t        *buttonlist = NULL;
 int             maxbuttons = 0;
 
+void P_ForgetSwitches (void)		// WAD reload: the zone was emptied
+{
+	switchlist = NULL;
+	maxswitchlist = 0;
+	buttonlist = NULL;
+	maxbuttons = 0;
+}
+
 /*
 ===============
 =

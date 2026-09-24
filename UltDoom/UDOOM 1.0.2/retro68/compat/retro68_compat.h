@@ -148,6 +148,7 @@ pascal void Retro68ParamText(ConstStr255Param p0, ConstStr255Param p1,
 /* ---- C <-> Pascal string conversion in place (mac_glue.c) ---- */
 char          *p2cstr(unsigned char *s);
 unsigned char *c2pstr(char *s);
+void MacSetEntries(short start, short count, CTabHandle ctab);  /* mac_glue.c */
 
 /* ---- QuickTime calls missing from Multiversal; selectors from Apple's
    Universal Headers 2.0a3 Movies.h (shipped in this repo under CW5). ---- */

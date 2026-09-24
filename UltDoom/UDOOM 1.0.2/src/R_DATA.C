@@ -357,15 +357,9 @@ void R_GenerateLookup (int texnum)
 	
 	for (x = 0; x < texture->width; x++)
 	{
-		if (!patchcount[x])
-		{
-			I_Error ("R_GenerateLookup: column without a patch (%s)\n", texture->name);
-			DisposePtr( patchcount );
-			// PopRoutineAllocA();
-			return;
-		}
-
-		if (patchcount[x] > 1)
+		// Retro68: a column no patch covers (a patch was missing) comes
+		// from the composite block, which R_GenerateComposite clears.
+		if (patchcount[x] != 1)
 		{
 			collump[x] = -1;	// use the cached block
 			colofs[x] = texturecompositesize[texnum];
@@ -485,9 +479,10 @@ void R_InitTextures (void)
 			fclose(patchfile);
 #endif
 
-			if (!shareware || (i < 163))
-				I_Error("Bad patch at index %d.", i);
-			else
+			// Retro68: a PNAMES entry without a patch lump (e.g. a DOOM 1
+			// PWAD's PNAMES over DOOM II) only matters to textures using it:
+			// R_InitTextures leaves it out of them.
+			if (shareware && (i >= 163))
 				break;
 		}
 	}
@@ -584,7 +579,11 @@ void R_InitTextures (void)
 #endif
 
 			if (patch->patch == -1)
-				I_Error ("R_InitTextures: Missing patch in texture %s",texture->name);
+			{	// Retro68: leave out a patch that isn't in the WADs
+				texture->patchcount--;
+				j--;
+				patch--;
+			}
 		}
 		texturecolumnlump[i] = Z_Malloc (texture->width * 2, PU_STATIC, 0);
 		texturecolumnofs[i] = Z_Malloc (texture->width * 2, PU_STATIC, 0);
@@ -811,6 +810,12 @@ int	R_FlatNumForName (char *name)
 static int			texhash[TEXHASHSIZE];
 static int			*texhashnext = NULL;
 static texture_t	**texhashbuilt = NULL;		// textures[] the table is for
+
+void R_ForgetTextureHash (void)		// WAD reload: the zone was emptied
+{
+	texhashnext = NULL;
+	texhashbuilt = NULL;
+}
 
 static unsigned TexNameHash (const char *name)
 {

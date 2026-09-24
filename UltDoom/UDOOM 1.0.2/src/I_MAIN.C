@@ -3143,7 +3143,7 @@ void RedrawScreen (void)
 				pixelSize = 0;
 				
 			if (pixelSize == 8)
-				SetEntries(0, 255, (**ctab).ctTable);
+				MacSetEntries(0, 255, ctab);
 		}
 	}
 
@@ -3251,7 +3251,7 @@ short InitialDialog ()
 		SetEntryColor(pal, (**gClut).ctTable[i].value, &(**gClut).ctTable[i].rgb);
 	ActivatePalette(gDoomWindow);
 	
-	SetEntries(0, 255, (**clutCopy).ctTable);
+	MacSetEntries(0, 255, clutCopy);
 
 	(**gClut).ctSeed = (**(**(**gMainDevice).gdPMap).pmTable).ctSeed;
 	CopyBits(&((GrafPtr)gOffPort)->portBits, &gDoomWindow->portBits, &sr, &r, srcCopy, NULL);
@@ -3266,7 +3266,7 @@ short InitialDialog ()
 			(**clutCopy).ctTable[vIndex].rgb.green = (**gClut).ctTable[i].rgb.green >> j;
 			(**clutCopy).ctTable[vIndex].rgb.blue = (**gClut).ctTable[i].rgb.blue >> j;
 		}
-		SetEntries(0, 255, (**clutCopy).ctTable);
+		MacSetEntries(0, 255, clutCopy);
 		Delay(kMyDelayTicks, &dummy);
 	}
 	
@@ -3357,7 +3357,7 @@ void LionSplash (void)
 	
 	SetGDevice(gMainDevice);
 	SetPort(gDoomWindow);
-	SetEntries(0, 255, (**clutCopy).ctTable);
+	MacSetEntries(0, 255, clutCopy);
 	
 	gPrevCTabSeed = (**(**(**gMainDevice).gdPMap).pmTable).ctSeed;
 
@@ -3377,7 +3377,7 @@ void LionSplash (void)
 			(**clutCopy).ctTable[vIndex].rgb.green = (**clut).ctTable[i].rgb.green >> j;
 			(**clutCopy).ctTable[vIndex].rgb.blue = (**clut).ctTable[i].rgb.blue >> j;
 		}
-		SetEntries(0, 255, (**clutCopy).ctTable);
+		MacSetEntries(0, 255, clutCopy);
 		Delay(kMyDelayTicks, &dummy);
 	}
 	
@@ -3400,7 +3400,7 @@ void LionSplash (void)
 			(**clutCopy).ctTable[vIndex].rgb.green = (**clut).ctTable[i].rgb.green >> j;
 			(**clutCopy).ctTable[vIndex].rgb.blue = (**clut).ctTable[i].rgb.blue >> j;
 		}
-		SetEntries(0, 255, (**clutCopy).ctTable);
+		MacSetEntries(0, 255, clutCopy);
 		Delay(kMyDelayTicks, &dummy);
 	}
 
@@ -3447,7 +3447,7 @@ DidBail1 :
 	
 	SetGDevice(gMainDevice);
 	SetPort(gDoomWindow);
-	SetEntries(0, 255, (**clutCopy).ctTable);
+	MacSetEntries(0, 255, clutCopy);
 	
 	gPrevCTabSeed = (**(**(**gMainDevice).gdPMap).pmTable).ctSeed;
 
@@ -3467,7 +3467,7 @@ DidBail1 :
 			(**clutCopy).ctTable[vIndex].rgb.green = (**clut).ctTable[i].rgb.green >> j;
 			(**clutCopy).ctTable[vIndex].rgb.blue = (**clut).ctTable[i].rgb.blue >> j;
 		}
-		SetEntries(0, 255, (**clutCopy).ctTable);
+		MacSetEntries(0, 255, clutCopy);
 		Delay(kMyDelayTicks, &dummy);
 	}
 	
@@ -3490,7 +3490,7 @@ DidBail1 :
 			(**clutCopy).ctTable[vIndex].rgb.green = (**clut).ctTable[i].rgb.green >> j;
 			(**clutCopy).ctTable[vIndex].rgb.blue = (**clut).ctTable[i].rgb.blue >> j;
 		}
-		SetEntries(0, 255, (**clutCopy).ctTable);
+		MacSetEntries(0, 255, clutCopy);
 		Delay(kMyDelayTicks, &dummy);
 	}
 
@@ -3509,7 +3509,7 @@ DidBail2 :
 	for (i = 0; i < 256; i++)
 		SetEntryColor(pal, (**clut).ctTable[i].value, &(**clut).ctTable[i].rgb);
 	ActivatePalette(gDoomWindow);
-	SetEntries(0, 255, (**clut).ctTable);
+	MacSetEntries(0, 255, clut);
 	DisposeHandle((Handle)clut);
 	
 	SetPort(gDoomWindow);

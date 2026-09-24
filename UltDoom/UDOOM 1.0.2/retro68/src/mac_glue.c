@@ -80,3 +80,16 @@ OSErr DirCreate(short vRefNum, long parentDirID, ConstStr255Param directoryName,
         return err ? err : dupFNErr;        /* already there */
     return FSpDirCreate(&spec, smSystemScript, createdDirID);
 }
+
+/* SetEntries can move memory (the Color Manager rebuilds its inverse
+   tables), and Lion passed it (**ctab).ctTable from an unlocked handle:
+   when the table moved during the call, SetEntries read garbage and the
+   machine took a bus error in system code.  Lock the table around it. */
+void MacSetEntries(short start, short count, CTabHandle ctab)
+{
+    SignedByte state = HGetState((Handle)ctab);
+
+    HLock((Handle)ctab);
+    SetEntries(start, count, (**ctab).ctTable);
+    HSetState((Handle)ctab, state);
+}

@@ -983,6 +983,57 @@ static int	maxlinespecials = 0;
 /*
 ===============
 =
+= P_ForgetZoneArrays
+=
+= The growable arrays (limit removal) are PU_STATIC zone blocks kept in
+= static pointers.  Reloading WADs (mac_wads.c) empties the zone, so the
+= pointers are dropped here and the arrays are allocated again as needed.
+= (They stay in the zone: the Mac heap can move handles while a frame is
+= being drawn, which the renderer doesn't expect.)
+=
+===============
+*/
+
+void R_ForgetPlanes (void);
+void R_ForgetDrawSegs (void);
+void R_ForgetVisSprites (void);
+void R_ForgetTextureHash (void);
+void P_ForgetIntercepts (void);
+void P_ForgetSwitches (void);
+void P_ForgetBrainTargets (void);
+
+void P_ForgetZoneArrays (void)
+{
+	extern ceiling_t	**activeceilings;
+	extern int			maxceilings;
+	extern plat_t		**activeplats;
+	extern int			maxplats;
+	extern line_t		**spechit;
+	extern int			spechit_max, numspechit;
+
+	anims = lastanim = NULL;
+	maxanims = 0;
+	linespeciallist = NULL;
+	maxlinespecials = 0;
+	numlinespecials = 0;
+	activeceilings = NULL;
+	maxceilings = 0;
+	activeplats = NULL;
+	maxplats = 0;
+	spechit = NULL;
+	spechit_max = numspechit = 0;
+	R_ForgetPlanes ();
+	R_ForgetDrawSegs ();
+	R_ForgetVisSprites ();
+	R_ForgetTextureHash ();
+	P_ForgetIntercepts ();
+	P_ForgetSwitches ();
+	P_ForgetBrainTargets ();
+}
+
+/*
+===============
+=
 = P_GrowArray
 =
 = Limit removal for the fixed-size lists vanilla DOOM kept (plats,

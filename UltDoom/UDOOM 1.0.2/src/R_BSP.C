@@ -15,6 +15,12 @@ sector_t	*frontsector = NULL, *backsector = NULL;
 drawseg_t	*drawsegs = NULL, *ds_p = NULL;
 static int	numdrawsegs = 0;
 
+void R_ForgetDrawSegs (void)		// WAD reload: the zone was emptied
+{
+	drawsegs = ds_p = NULL;
+	numdrawsegs = 0;
+}
+
 /*
 ====================
 =

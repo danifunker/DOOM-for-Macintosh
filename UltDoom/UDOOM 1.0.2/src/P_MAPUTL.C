@@ -489,6 +489,12 @@ boolean P_BlockThingsIterator (int x, int y, boolean(*func)(mobj_t*) )
 intercept_t		*intercepts = NULL, *intercept_p;
 static int		numintercepts = 0;
 
+void P_ForgetIntercepts (void)		// WAD reload: the zone was emptied
+{
+	intercepts = intercept_p = NULL;
+	numintercepts = 0;
+}
+
 static void P_CheckIntercepts (void)
 {
 	int			used = intercept_p - intercepts;

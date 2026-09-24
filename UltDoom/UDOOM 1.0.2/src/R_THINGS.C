@@ -224,6 +224,12 @@ void R_InitSpriteDefs (char **namelist)
 
 vissprite_t	*vissprites = NULL, *vissprite_p;
 static int	numvissprites = 0;
+
+void R_ForgetVisSprites (void)		// WAD reload: the zone was emptied
+{
+	vissprites = vissprite_p = NULL;
+	numvissprites = 0;
+}
 int			newvissprite;
 
 

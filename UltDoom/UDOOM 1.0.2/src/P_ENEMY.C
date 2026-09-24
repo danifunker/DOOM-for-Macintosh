@@ -1768,6 +1768,13 @@ void A_CloseShotgun2 (player_t *player, pspdef_t *psp)
 mobj_t	**braintargets = NULL;
 int		numbraintargets;
 static int	maxbraintargets = 0;
+
+void P_ForgetBrainTargets (void)	// WAD reload: the zone was emptied
+{
+	braintargets = NULL;
+	numbraintargets = 0;
+	maxbraintargets = 0;
+}
 int		braintargeton;
 
 void A_BrainAwake (mobj_t *mo)
