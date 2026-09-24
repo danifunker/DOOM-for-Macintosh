@@ -1116,6 +1116,33 @@ extern	boolean	advancedemo;
 
 int		notFirstTime = 0;
 
+/*
+=================
+=
+= D_NetResync
+=
+= Retro68: a timed demo (singletics) advances gametic and maketic itself and
+= leaves the tic exchange alone.  Vanilla quit after a timedemo; the
+= Benchmark menu goes back to the game, where NetUpdate then found the
+= local node thousands of tics behind ("netbuffer->numtics > BACKUPTICS").
+= Bring the exchange up to date first.
+=
+=================
+*/
+
+void D_NetResync (void)
+{
+	int		i;
+
+	for (i = 0; i < MAXNETNODES; i++)
+	{
+		nettics[i] = maketic;
+		resendto[i] = maketic;
+	}
+	skiptics = 0;
+	gametime = I_GetTime () / ticdup;
+}
+
 void TryRunTics (void)
 {
 	int             i;

@@ -313,6 +313,10 @@ boolean MacBench_DemoDone(int tics, int realtics)
 
     timingdemo = false;
     singletics = false;
+    {
+        extern void D_NetResync(void);
+        D_NetResync();                  /* the tic exchange sat out the run */
+    }
     sDemoIndex = 0;
     ShowResults();
     memset(sTics, 0, sizeof(sTics));
