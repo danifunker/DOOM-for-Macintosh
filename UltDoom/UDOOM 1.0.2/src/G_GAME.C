@@ -400,7 +400,11 @@ void G_BuildTiccmd (ticcmd_t *cmd)
 		}
 	}
 
-	forward += mousey;
+	{
+		extern int gDoomMoveConfig;
+		if (gDoomMoveConfig != 4)		// Retro68 Mouse Look: the keys move
+			forward += mousey;
+	}
 	if (strafe)
 		side += mousex * 2;
 	else

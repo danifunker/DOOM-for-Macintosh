@@ -3793,6 +3793,10 @@ void main (void)
 			MacBench_InstallMenu ();		// Show Frame Rate / Benchmark
 			MacMenus_Install ();			// Multiplayer menu
 			{
+				extern void MacMenus_InstallControls (void);
+				MacMenus_InstallControls ();	// Options > Mouse Look
+			}
+			{
 				extern void MacWads_InstallMenu (void);
 				MacWads_InstallMenu ();		// WADs menu
 			}

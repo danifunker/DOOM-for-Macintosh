@@ -12,6 +12,7 @@
  */
 #include "LionDoom.h"
 #include "doomdef.h"
+#include "DoomResources.h"
 
 void M_ClearMenus(void);
 
@@ -35,6 +36,77 @@ void  MacBench_SyncMenu(void);
 
 static MenuHandle sMenu;
 static Boolean    sStartPending;
+
+/* ---- Options > Mouse Look ----
+   Key layout 4 (KeyConfig.c): the mouse turns and fires, W A S D or the
+   arrow keys move and strafe, and moving the mouse forward does nothing
+   (G_BuildTiccmd).  Saved in the prefs with the other layouts. */
+#define kMouseLookConfig    4
+extern int      gDoomMoveConfig, useMouse, usejoystick;
+extern Boolean  gMouseCaptured;
+static short    sMouseLookItem;
+static int      sPrevMoveConfig = 1;
+
+static void SyncControlMarks(void)
+{
+    MenuHandle m = GetMHandle(mOptionsMenu);
+    Boolean    look = gDoomMoveConfig == kMouseLookConfig;
+
+    if (!m || !sMouseLookItem)
+        return;
+    SetItemMark(m, 1, !look && !useMouse && !usejoystick ? checkMark : noMark);
+    SetItemMark(m, 2, !look && useMouse && !usejoystick ? checkMark : noMark);
+    SetItemMark(m, 3, !look && usejoystick ? checkMark : noMark);
+    SetItemMark(m, sMouseLookItem, look ? checkMark : noMark);
+}
+
+void MacMenus_InstallControls(void)
+{
+    MenuHandle m = GetMHandle(mOptionsMenu);
+
+    if (!m)
+        return;
+    AppendMenu(m, "\p(-;x");
+    sMouseLookItem = CountMItems(m);
+    SetMenuItemText(m, sMouseLookItem, "\pMouse Look (WASD / Arrows)");
+    if (gDoomMoveConfig == kMouseLookConfig)
+    {
+        useMouse = 1;
+        usejoystick = 0;
+    }
+    SyncControlMarks();
+}
+
+/* After Lion's own Options handling (I_IBM.C HandleMenu). */
+void MacMenus_HandleOptions(short item)
+{
+    Boolean look = gDoomMoveConfig == kMouseLookConfig;
+
+    if (sMouseLookItem && item == sMouseLookItem)
+    {
+        if (look)
+            gDoomMoveConfig = sPrevMoveConfig;  /* back to plain mouse mode */
+        else
+        {
+            sPrevMoveConfig = gDoomMoveConfig;
+            gDoomMoveConfig = kMouseLookConfig;
+            useMouse = 1;
+            usejoystick = 0;
+        }
+        gMouseCaptured = false;             /* I_StartTic captures it again */
+        InitCursor();
+    }
+    else if (look && item >= 1 && item <= 3)
+    {
+        gDoomMoveConfig = sPrevMoveConfig;  /* Keyboard / Mouse / Joystick */
+        if (item == 2)
+        {
+            useMouse = 1;
+            usejoystick = 0;
+        }
+    }
+    SyncControlMarks();
+}
 
 void MacMenus_Install(void)
 {

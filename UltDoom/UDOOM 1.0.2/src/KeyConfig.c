@@ -217,6 +217,20 @@ void ReadActionKeys (void)
 				}
 			}
 			break;
+			
+		case 4 :		// Retro68: Mouse Look (mac_menus.c): the mouse turns and
+						// fires, W A S D or the arrow keys move and strafe
+			if (!chat_on && !menuactive && !gCmdKeyDown)
+			{
+				gamekeydown[key_up] = IsKeyPressed(0x0D) || IsKeyPressed(0x7E);			// W, Up
+				gamekeydown[key_down] = IsKeyPressed(0x01) || IsKeyPressed(0x7D);			// S, Down
+				gamekeydown[key_strafeleft] = IsKeyPressed(0x00) || IsKeyPressed(0x7B);	// A, Left
+				gamekeydown[key_straferight] = IsKeyPressed(0x02) || IsKeyPressed(0x7C);	// D, Right
+				// the default fire key is D: a fire key on W A S D is left to the mouse
+				if (gFireKeyScanCode <= 0x02 || gFireKeyScanCode == 0x0D)
+					gamekeydown[key_fire] = 0;
+			}
+			break;
 	}
 }
 

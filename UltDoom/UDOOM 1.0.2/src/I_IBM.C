@@ -1736,6 +1736,10 @@ void HandleMenu (short menuId, short menuItem)
 					}
 					break;
 			}
+			{
+				extern void MacMenus_HandleOptions (short item);
+				MacMenus_HandleOptions (menuItem);	// Retro68: Mouse Look
+			}
 		break;
 	
 		case mControlMenu : // Control menu
