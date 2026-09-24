@@ -42,6 +42,16 @@ real Quadra 800. Fixed this session (all tested in QEMU):
 - Don't malloc during rendering: Retro68 malloc = NewPtr, which moves handles (stash@{0} = the
   failed attempt).
 
+**Native PowerPC build (2026-09-24):** `cmake -S . -B build-ppc -DCMAKE_TOOLCHAIN_FILE=
+$RETRO68/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake` (commit 400dc12). Same
+sources, Lion's powerc paths (C drawers), -fsigned-char (demo sync: 7920 gametics on both CPUs
+with GOG DOOM.WAD). Test env: `~/doom-mac-testenv/os9/run9.sh` (QEMU mac99 G4, Mac OS 9.2.2 as a
+fresh overlay on `~/MacOS9-2-2 UTM.qcow2`, never write that file; app + WAD on an HFS CD;
+ARGS="-bench"). The user's real G4 runs OS 9.2.2 natively; the 68K build got ~18 fps there.
+Next for the G4: native PowerPC speed work (no asm drawers yet), and switching the display to
+640x480 (their screen is 1280x854 and the game sits small in the middle).
+Download page for the G4: ~/doom-mac-testenv/www (refresh.sh), http://192.168.99.153:8068/.
+
 Waiting on the user: Quadra results (benchmark ⌘B numbers at large/small graphics, low detail;
 real-hardware FPS was ~12.4 with the counter), whether the demo1 crash is gone.
 Open: counter quirks (stale history on toggle, 63/64 frames); red progress bar remnant below the
