@@ -27,30 +27,26 @@ Paste this whole file as the first message of a new session to continue.
 - Release pipeline: both `tools/release.sh` and GitHub Actions (`.github/workflows/retro68.yml`).
   Nothing pushed yet; pushing the branch / tags needs the user's OK.
 
-## >>> WHERE WE STOPPED (2026-09-23, late) <<<
+## >>> WHERE WE STOPPED (2026-09-23, night) <<<
 
-The user asked for a personal "full version" test disk from their GOG ISO, and flagged that
-**music may not be loading correctly for some add-ons**. Work in progress:
+The user is testing `~/Desktop/DOOM-Quadra-full.hda` (make-full-disk.sh, "-musiclog") on the
+real Quadra 800. Fixed this session (all tested in QEMU):
+- WAD music: QuickTime 2.x can't open a plain .MID (-2048); `MacWads_MidiToMovie` converts it once
+  to a .MID! movie (ConvertFileToMovieFile). User heard music on the Quadra. Music log uses the
+  File Manager now (fopen "a" lost lines).
+- Control menu F-key items (Detail, Gamma ⌘G, Sound...) close DOOM's menu first.
+- Crash: R_MakeSpans used leftover `bottom[]` of empty columns (0xFFFF → row 65535, bus error in
+  R_DrawSpan040). Matches the user's MacsBug crash on the Quadra (confirm with them).
+- WAD reload: P_ForgetZoneArrays (stale grow arrays, "Z_Free ... without ZONEID"), colormap
+  Mac-palette remap redone (black showed white), missing PNAMES patches tolerated.
+- Don't malloc during rendering: Retro68 malloc = NewPtr, which moves handles (stash@{0} = the
+  failed attempt).
 
-1. **Fix the music log first.** `-musiclog` writes "DOOM Music Log" via `fopen(..., "a")`
-   (mac_wads.c: `LogMusic`, `MacWads_SetMusicLog`, `TryMusic`); Retro68's append mode loses
-   later lines (the log always shows the same 2 lines). Rewrite as a File Manager helper:
-   FSMakeFSSpec(gAppVRefNum, gAppDirId, "\pDOOM Music Log"), FSpCreate 'ttxt'/'TEXT' if
-   fnfErr, FSpOpenDF, SetFPos(fsFromLEOF), FSWrite (CR line ends), FSClose, FlushVol.
-   S_ChangeMusic (src/S_SOUND.C) already calls `MacWads_LogMusicErr` for each QuickTime step
-   ("no file to open", NewMovieFromFile / LoadMovieIntoRam / StartMovie errors, "playing").
-2. **Then find out why music fails.** Run the full disk with `-musiclog` for NERVE, SIGIL,
-   Master Levels; read the log after a *graceful* shutdown. Known facts: conversion works
-   (MIDI/SIGIL/E5M1.MID, 22211 bytes, typed Midi/TVOD, created in QEMU). Suspect: plain
-   .MID files may not open through `NewMovieFromFile` on QuickTime 2.x (needs the MIDI
-   import component; the older tested path used Lion's .MID! QuickTime movies). If so, try
-   `ConvertFileToMovieFile` or `NewMovieFromFile` with an import, or keep the .MID! route.
-   QEMU has no audio, so rely on the log. Also `gOnCD` in S_ChangeMusic sticks once set.
-3. Test UMAPINFO level flow (the user said **don't add an -autoexit test helper**; test by
-   playing or on the real Quadra): next/nextsecret, intermission names/pictures, finales
-   (NERVE MAP08 endcast, SIGIL E5M8 endpic CREDIT), Master Levels bossaction (82/96, tags
-   666/667, implemented by borrowing lines[0] with a living player as activator).
-4. Give the user the personal full disk (below) once music is right.
+Waiting on the user: Quadra results (benchmark ⌘B numbers at large/small graphics, low detail;
+real-hardware FPS was ~12.4 with the counter), whether the demo1 crash is gone.
+Open: counter quirks (stale history on toggle, 63/64 frames); red progress bar remnant below the
+status bar after a reload; `-mouse` doesn't check "Mouse" in the Options menu; MacsBug test system
+`~/doom-mac-testenv/qemu/sys755-macsbug.hda` (SYSBASE=...). Then UMAPINFO flow testing.
 
 ### Personal full disk (never commit or distribute)
 
