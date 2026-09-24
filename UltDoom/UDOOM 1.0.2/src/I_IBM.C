@@ -2069,6 +2069,36 @@ void I_StartTic (void)
 	else if (gInForeground && !useMouse && !usejoystick)
 		ObscureCursor();
 	
+	// Retro68: while a level is being played the pointer is a blank cursor,
+	// so it stays out of the picture even when something (a level load,
+	// the loading spinner, a dialog, a mouse nudge after ObscureCursor)
+	// has made it visible again.  In keyboard mode it is an arrow again at
+	// the menu bar, which it reaches that way.
+	{
+		static const Cursor	sBlankCursor;		// all zero: nothing drawn
+		static Boolean		sBlankOn;
+		Boolean	blank = gInForeground && gamestate == GS_LEVEL && !menuactive &&
+						!paused && !demoplayback;
+		
+		if (blank && !gMouseCaptured)
+		{
+			short	top = gMenuHidden ? gOldeMBarHeight : LMGetMBarHeight();
+			
+			if (mLoc.v < top + 4)
+				blank = false;
+		}
+		if (blank)
+		{
+			SetCursor(&sBlankCursor);
+			sBlankOn = true;
+		}
+		else if (sBlankOn)
+		{
+			SetCursor(&qd.arrow);
+			sBlankOn = false;
+		}
+	}
+	
 	mLoc.h -= (**gMainDevice).gdRect.left;
 	mLoc.v -= (**gMainDevice).gdRect.top;
 	
