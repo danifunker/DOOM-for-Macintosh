@@ -122,6 +122,7 @@ add_application(UltimateDOOM
     src/deh.c
     src/mus2mid.c
     src/umapinfo.c
+    src/mac_display.c
     ${DOOM_ASM_SOURCES}
     rsrc/DoomShell.rsrc.bin
     ${CMAKE_CURRENT_BINARY_DIR}/UltimateDOOM.r
@@ -138,7 +139,7 @@ if(DOOM_PPC)
     # char unsigned, which desyncs demos and net games.
     set(DOOM_ARCH_FLAGS -mcpu=750 -mtune=7400 -fsigned-char)
     target_compile_definitions(UltimateDOOM PRIVATE powerc=1 __powerc=1)
-    target_link_libraries(UltimateDOOM QuickTimeLib SoundLib)
+    target_link_libraries(UltimateDOOM QuickTimeLib SoundLib DisplayLib)
 else()
     set(DOOM_ARCH_FLAGS -m${DOOM_CPU} -msoft-float)
 endif()

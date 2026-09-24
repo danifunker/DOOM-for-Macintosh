@@ -1383,8 +1383,10 @@ Error:
 void RestoreScreenDepth( void )
 {
 	short			err;
+	extern Boolean	MacDisplay_Changed (void);
+	extern void		MacDisplay_Restore (GDHandle gd);
 	
-	if ( gChangedScreenDepth )
+	if ( gChangedScreenDepth || MacDisplay_Changed() )		// Retro68: resolution too
 	{
 		ParamText("\pWould you like to reset your monitor to its previous setting before quitting?", "\p", "\p", "\p");
 		InitCursor();
@@ -1392,7 +1394,9 @@ void RestoreScreenDepth( void )
 		
 		if ( Alert(600, NULL) == 1 )
 		{
-			err = SetDepth( gMainDevice, gPreviousScreenMode, 1 << gdDevType, gColorScreenMode );
+			MacDisplay_Restore( gMainDevice );
+			if ( gChangedScreenDepth )
+				err = SetDepth( gMainDevice, gPreviousScreenMode, 1 << gdDevType, gColorScreenMode );
 		}
 	}
 	
@@ -1421,9 +1425,6 @@ void MakeDoomWindow (void)
 	SetRect(&r, 0, 0, 320, 200);
 	OffsetRect(&r, 10, 40);
 	
-	r = (**gMainDevice).gdRect;
-	gMainDeviceRect = r;
-	
 	if (pixelSize != 8)
 	{
 		if (!ChangeScreenDepth ( pixelSize, gMainDevice ))
@@ -1433,6 +1434,14 @@ void MakeDoomWindow (void)
 			ExitToShell();
 		}
 	}
+	
+	{	// Retro68: offer 640x480 on a large monitor (mac_display.c)
+		extern void MacDisplay_OfferLowRes (GDHandle gd);
+		MacDisplay_OfferLowRes (gMainDevice);
+	}
+	
+	r = (**gMainDevice).gdRect;
+	gMainDeviceRect = r;
 	
 	gDoomWindow = NewCWindow( NULL, &r, "\pDoom II", TRUE, noGrowDocProc, (WindowPtr) -1L, 
 		FALSE, 0L);
