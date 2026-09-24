@@ -1259,8 +1259,8 @@ void InitManagers (void)
 	vers = SndSoundManagerVersion();
 	if ((vers & 0xFF000000L) < 0x03000000L)
 #else
-	vers = SndSoundManagerVersion();
-	if (vers.majorRev < 3)
+	vers = SndSoundManagerVersion();		// Retro68: NumVersion is a long
+	if ((vers & 0xFF000000L) < 0x03000000L)
 #endif
 	{
 		ParamText("\pDoom II requires Sound Manager 3.0 or later in order to run. Exiting to Finder.", "\p", "\p", "\p");

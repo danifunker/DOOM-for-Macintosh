@@ -12,10 +12,10 @@
 #include <Multiverse.h>
 
 #ifndef GENERATINGPOWERPC
-#define GENERATINGPOWERPC 0
+#define GENERATINGPOWERPC TARGET_CPU_PPC
 #endif
 #ifndef GENERATING68K
-#define GENERATING68K 1
+#define GENERATING68K TARGET_CPU_68K
 #endif
 #ifndef USES68KINLINES
 #define USES68KINLINES 0
@@ -31,24 +31,33 @@
 #define SIXWORDINLINE(a,b,c,d,e,f)       M68K_INLINE(a,b,c,d,e,f)
 #endif
 
-/* ---- Mixed Mode: routine descriptors only matter to CFM code; on classic
-   68K these ProcInfo values are computed but never used. ---- */
+/* ---- Mixed Mode ProcInfo macros (Apple's MixedMode.h; Multiversal has the
+   enum constants but not these).  On classic 68K the values are computed but
+   never used; the PowerPC build hands them to NewRoutineDescriptor. ---- */
 #ifndef RESULT_SIZE
-#define SIZE_CODE(size)                                  0
-#define RESULT_SIZE(sizeCode)                            0
-#define STACK_ROUTINE_PARAMETER(whichParam, sizeCode)    0
-#define REGISTER_RESULT_LOCATION(whichReg)               0
-#define REGISTER_ROUTINE_PARAMETER(whichParam, whichReg, sizeCode) 0
-#define SPECIAL_CASE_PROCINFO(specialCaseCode)           0
+#define SIZE_CODE(size) \
+    (((size) == 4) ? kFourByteCode : (((size) == 2) ? kTwoByteCode : (((size) == 1) ? kOneByteCode : 0)))
+#define RESULT_SIZE(sizeCode) \
+    ((ProcInfoType)(sizeCode) << 4)
+#define STACK_ROUTINE_PARAMETER(whichParam, sizeCode) \
+    ((ProcInfoType)(sizeCode) << (6 + (((whichParam) - 1) * 2)))
+#define REGISTER_RESULT_LOCATION(whichReg) \
+    ((ProcInfoType)(whichReg) << 6)
+#define REGISTER_ROUTINE_PARAMETER(whichParam, whichReg, sizeCode) \
+    ((((ProcInfoType)(sizeCode)) | ((ProcInfoType)(whichReg) << 2)) << (11 + (((whichParam) - 1) * 5)))
+#define SPECIAL_CASE_PROCINFO(specialCaseCode) \
+    (kSpecialCase | ((ProcInfoType)(specialCaseCode) << 4))
 #endif
 #ifndef USESROUTINEDESCRIPTORS
-#define USESROUTINEDESCRIPTORS 0
+#define USESROUTINEDESCRIPTORS TARGET_CPU_PPC
 #endif
+#if TARGET_CPU_68K
 /* Multiversal declares these as _MixedModeDispatch traps, which classic 68K
    systems don't implement ("unimplemented trap").  Apple's 68K headers made
    them plain casts / no-ops; do the same. */
 #define NewRoutineDescriptor(proc, info, isa)   ((UniversalProcPtr)(proc))
 #define DisposeRoutineDescriptor(upp)           ((void)(upp))
+#endif
 typedef ProcPtr Register68kProcPtr;
 enum { kSpecialCaseProtocolHandler = 7, kSpecialCaseSocketListener = 8 };
 typedef const unsigned char *ConstStr32Param;
@@ -123,7 +132,13 @@ pascal OSErr CursorDeviceNextDevice(CursorDevicePtr *ourDevice)
 #define AddResMenu          AppendResMenu
 #define TextBox             TETextBox
 #define GetGrayRgn()        LMGetGrayRgn()
+typedef TMTask *TMTaskPtr;
+#if TARGET_CPU_PPC
+enum { uppTimerProcInfo = kRegisterBased | REGISTER_ROUTINE_PARAMETER(1, kRegisterA1, kFourByteCode) };
+#define NewTimerProc(p)     NewRoutineDescriptor((ProcPtr)(p), uppTimerProcInfo, GetCurrentArchitecture())
+#else
 #define NewTimerProc(p)     ((ProcPtr)(p))
+#endif
 
 /* Low-memory accessors Multiversal declares but provides no glue for. */
 #define GetMMUMode()        ((Byte)LMGetMMU32Bit())

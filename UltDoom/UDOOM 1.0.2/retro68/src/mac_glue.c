@@ -93,3 +93,22 @@ void MacSetEntries(short start, short count, CTabHandle ctab)
     SetEntries(start, count, (**ctab).ctTable);
     HSetState((Handle)ctab, state);
 }
+
+#if TARGET_CPU_PPC
+/* PowerPC: Lion's fat binary had these in CodeWarrior assembly (not in the
+   source tree); HiWord/LoWord are glue, not InterfaceLib exports. */
+typedef int fixed_t;
+
+fixed_t AsmFixedMul(fixed_t a, fixed_t b)
+{
+    return (fixed_t)(((long long)a * b) >> 16);
+}
+
+fixed_t AsmFixedDiv(fixed_t a, fixed_t b)
+{
+    return (fixed_t)(((long long)a << 16) / b);
+}
+
+short HiWord(long x) { return (short)(x >> 16); }
+short LoWord(long x) { return (short)x; }
+#endif

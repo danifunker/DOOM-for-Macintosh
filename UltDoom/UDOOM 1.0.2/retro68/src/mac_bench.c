@@ -189,7 +189,30 @@ static long FPS10(int tics, int realtics)
 
 static const char *CPUName(void)
 {
-    long cpu = 0, fpu = 0;
+    long cpu = 0, fpu = 0, arch = 0;
+
+    /* A Power Mac: gestaltNativeCPUtype ('cput') names the chip; the 68K
+       build runs there under the 68K emulator. */
+    if (Gestalt('sysa', &arch) == noErr && arch == 2)
+    {
+        const char *chip = "PowerPC";
+
+        Gestalt('cput', &cpu);
+        switch (cpu)
+        {
+            case 0x101:                         chip = "PowerPC 601"; break;
+            case 0x103: case 0x106: case 0x107: chip = "PowerPC 603"; break;
+            case 0x104: case 0x109: case 0x10A: chip = "PowerPC 604"; break;
+            case 0x108: case 0x120:             chip = "G3"; break;
+            case 0x10C: case 0x110: case 0x111: case 0x112: chip = "G4"; break;
+        }
+#if TARGET_CPU_PPC
+        return chip;
+#else
+        return strcmp(chip, "G4") == 0 ? "68K emulated on G4"
+             : strcmp(chip, "G3") == 0 ? "68K emulated on G3" : "68K emulated on PowerPC";
+#endif
+    }
 
     /* gestaltProcessorType: 1=68000 2=68010 3=68020 4=68030 5=68040 */
     Gestalt(gestaltProcessorType, &cpu);

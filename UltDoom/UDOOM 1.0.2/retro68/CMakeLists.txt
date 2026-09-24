@@ -12,6 +12,14 @@ project(UltimateDOOM C ASM)
 
 set(DOOM_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
+# PowerPC: the same sources with Retro68's retroppc toolchain, using the
+# PowerPC code paths Lion's fat binary had (C drawers instead of the asm).
+if(CMAKE_SYSTEM_NAME STREQUAL "RetroPPC")
+    set(DOOM_PPC ON)
+else()
+    set(DOOM_PPC OFF)
+endif()
+
 set(DOOM_CPU "68040" CACHE STRING "Target CPU passed to -m (68020, 68030, 68040)")
 set(DOOM_OPT "-O2" CACHE STRING "Optimisation flags")
 option(DOOM_SINGLE_SEGMENT "Link as one CODE segment (no jump-table calls)" OFF)
@@ -96,6 +104,12 @@ set_source_files_properties(${DOOM_SOURCES} PROPERTIES
     LANGUAGE C
     COMPILE_OPTIONS "-xc")
 
+if(DOOM_PPC)
+    set(DOOM_ASM_SOURCES)
+else()
+    set(DOOM_ASM_SOURCES src/Draw68K.s src/Blit68K.s src/Fast68K.s)
+endif()
+
 add_application(UltimateDOOM
     ${DOOM_SOURCES}
     src/net_stubs.c
@@ -108,9 +122,7 @@ add_application(UltimateDOOM
     src/deh.c
     src/mus2mid.c
     src/umapinfo.c
-    src/Draw68K.s
-    src/Blit68K.s
-    src/Fast68K.s
+    ${DOOM_ASM_SOURCES}
     rsrc/DoomShell.rsrc.bin
     ${CMAKE_CURRENT_BINARY_DIR}/UltimateDOOM.r
     CREATOR idSW
@@ -120,8 +132,19 @@ target_include_directories(UltimateDOOM PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/compat
     ${CI_DIR})
 
+if(DOOM_PPC)
+    # G3 instruction set (runs on every G3/G4), scheduled for the G4.  DOOM
+    # keeps signed values in plain chars (ticcmd moves); PowerPC GCC makes
+    # char unsigned, which desyncs demos and net games.
+    set(DOOM_ARCH_FLAGS -mcpu=750 -mtune=7400 -fsigned-char)
+    target_compile_definitions(UltimateDOOM PRIVATE powerc=1 __powerc=1)
+    target_link_libraries(UltimateDOOM QuickTimeLib SoundLib)
+else()
+    set(DOOM_ARCH_FLAGS -m${DOOM_CPU} -msoft-float)
+endif()
+
 target_compile_options(UltimateDOOM PRIVATE
-    -m${DOOM_CPU} -msoft-float
+    ${DOOM_ARCH_FLAGS}
     SHELL:${DOOM_OPT}
     -fomit-frame-pointer
     -ffunction-sections
@@ -133,7 +156,7 @@ target_compile_options(UltimateDOOM PRIVATE
     $<$<COMPILE_LANGUAGE:C>:-Werror=implicit-function-declaration>)
 
 target_link_options(UltimateDOOM PRIVATE
-    -m${DOOM_CPU} -msoft-float
+    ${DOOM_ARCH_FLAGS}
     -Wl,-gc-sections)
 if(DOOM_SINGLE_SEGMENT)
     target_link_options(UltimateDOOM PRIVATE -Wl,--mac-single)
