@@ -1,4 +1,4 @@
-# Ultimate DOOM 1.0.2 for 68040 Macs (Retro68 build)
+# Ultimate DOOM 1.0.2 for 68040 and PowerPC Macs (Retro68 build)
 
 This directory builds Lion Entertainment's Ultimate DOOM 1.0.2 sources
 (`../src`, `../hdrs`) with the [Retro68](https://github.com/autc04/Retro68)
@@ -7,6 +7,9 @@ GCC cross-toolchain.
 The binary targets the 68040 but uses no FPU instructions, so it runs on
 full 68040 machines (Quadra 700/800/900/950, Centris 650) and on the
 FPU-less 68LC040 (Centris 610, Quadra 605, LC/Performa 475, etc.).
+The same sources also build natively for PowerPC (G3/G4, Mac OS 8 or later;
+tested on Mac OS 9.2.2), using the PowerPC code paths of Lion's original fat
+binary.
 
 One application plays every base WAD: shareware `DOOM1.WAD`, registered or
 Ultimate `DOOM.WAD`, `DOOM2.WAD`, and Final DOOM's `TNT.WAD` / `PLUTONIA.WAD`
@@ -39,6 +42,18 @@ Options (`-D...`):
 | `DOOM_CPU` | `68040` | `-m` CPU; `68020`/`68030` also build, untested |
 | `DOOM_OPT` | `-O2` | optimisation flags |
 | `DOOM_SINGLE_SEGMENT` | `OFF` | link as one CODE segment (measured no faster) |
+
+Native PowerPC (the Retro68 toolchain built with PowerPC support):
+
+```sh
+cmake -S . -B build-ppc \
+  -DCMAKE_TOOLCHAIN_FILE=$RETRO68/toolchain/powerpc-apple-macos/cmake/retroppc.toolchain.cmake
+cmake --build build-ppc
+```
+
+It uses Lion's C column/span drawers instead of the 68K assembly, and is
+built with `-fsigned-char` (DOOM keeps signed values in plain `char`; demo
+sync is identical to the 68K build).
 
 ## Packaging a disk image
 

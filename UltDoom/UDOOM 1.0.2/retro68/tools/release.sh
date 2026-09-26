@@ -10,7 +10,8 @@
 # (.github/workflows/release.yml) runs this same script.
 #
 # Output, besides the dist/ files from make-dist.sh:
-#   UltimateDOOM-<v>-68040.sit.hqx           the application (StuffIt, BinHex)
+#   UltimateDOOM-<v>-68040.sit.hqx           the 68K application (StuffIt, BinHex)
+#   UltimateDOOM-<v>-PPC.sit.hqx             the native PowerPC application
 #   DOOM-<v>-68040-shareware.hda.zip         playable SCSI disk image
 #   DOOM-<v>-68040-noWAD.hda.zip             the same without a WAD
 #   SHA256SUMS
@@ -41,5 +42,22 @@ cp "$build/dist/UltimateDOOM-$version-68040.sit.hqx" "$out/"
 for d in shareware noWAD; do
     ( cd "$build/dist" && zip -q -9 "../release/DOOM-$version-68040-$d.hda.zip" "DOOM-$version-68040-$d.hda" )
 done
+# Native PowerPC build (same sources, retroppc toolchain), packed the same
+# way: MacBinary -> HFS image -> BinHex -> StuffIt, keeping both forks.
+ppc=build-release-ppc
+rm -rf "$ppc"
+cmake -S . -B "$ppc" \
+    -DCMAKE_TOOLCHAIN_FILE="$tc/powerpc-apple-macos/cmake/retroppc.toolchain.cmake" \
+    -DDOOM_VERSION="$version" >/dev/null
+cmake --build "$ppc" -j"$(nproc 2>/dev/null || echo 2)"
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+python3 tools/mbrename.py "$ppc/UltimateDOOM.bin" "$work/app.bin" "Ultimate DOOM PPC"
+rb-cli --progress never -q new --fs hfs --size 4M --name PPC "$work/ppc.hfs" >/dev/null 2>&1 ||
+    rb-cli --progress never -q new volume hfs --size 4M --name PPC "$work/ppc.hfs" >/dev/null
+rb-cli --progress never -q put-macbinary "$work/ppc.hfs" "$work/app.bin" >/dev/null
+rb-cli --progress never -q get-binhex "$work/ppc.hfs" "/Ultimate DOOM PPC" "$work/Ultimate DOOM PPC.hqx"
+rb-cli --progress never -q archive create "$out/UltimateDOOM-$version-PPC.sit.hqx" "$work/Ultimate DOOM PPC.hqx"
+
 ( cd "$out" && sha256sum * > SHA256SUMS )
 ls -la "$out"

@@ -1,4 +1,4 @@
-# Builds the Retro68 (68040 / 68LC040 classic Mac OS) port of Ultimate DOOM.
+# Builds the Retro68 port of Ultimate DOOM: 68040 / 68LC040 and native PowerPC.
 #
 #   push / pull request   build, upload the release files as a workflow artifact
 #   tag v1.2.3            the same, then publish them as GitHub Release "v1.2.3"
@@ -59,6 +59,6 @@ jobs:
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
-          name: Ultimate DOOM for 68040 Macs ${{ github.ref_name }}
+          name: Ultimate DOOM for 68K and PowerPC Macs ${{ github.ref_name }}
           body_path: ${{ env.PORT_DIR }}/RELEASE_NOTES.md
           files: ${{ env.PORT_DIR }}/build-release/release/*
