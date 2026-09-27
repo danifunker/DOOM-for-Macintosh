@@ -722,7 +722,8 @@ Boolean MacWads_FindMusic(const char *track, FSSpec *out)
         if (ConvertMusic(lump, folder, track, out))
             return true;
     }
-    LogMusic(track, "not found");
+    if (!sLookupOnly)
+        LogMusic(track, "not found");
     return false;
 }
 
