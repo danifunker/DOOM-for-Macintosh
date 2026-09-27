@@ -178,6 +178,8 @@ pascal TimeValue GetMovieDuration(Movie theMovie) M68K_INLINE(0x702B, 0xAAAA);
 pascal void      SetMovieVolume(Movie theMovie, short volume) M68K_INLINE(0x702F, 0xAAAA);
 pascal TimeValue GetMovieTime(Movie theMovie, TimeRecord *currentTime)
                                   M68K_INLINE(0x7039, 0xAAAA);
+pascal OSErr     PrerollMovie(Movie theMovie, TimeValue time, Fixed rate)
+                                  M68K_INLINE(0x7006, 0xAAAA);
 /* QuickTime 2.0's NewMovieFromFile does not open a standard MIDI file:
    mac_wads.c converts it to a movie file first. */
 enum { createMovieFileDeleteCurFile = 1L << 31 };

@@ -218,6 +218,10 @@ void S_ChangeMusic (int musicnum, int looping)
 		goto DeallocateCloseAndReturn;
 	}
 	
+	// Retro68: let QuickTime set the music up (instruments and all) here,
+	// not at interrupt time while DOOM is reading the WAD.
+	(void) PrerollMovie(aMovie, 0, 0x00010000);
+	
 	err = CloseMovieFile(fRefNum);
 	
 	if (err != noErr)

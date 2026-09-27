@@ -64,6 +64,7 @@ static Boolean    sReloadPending;
 static char       sArgFiles[kMaxWadFiles][64];
 static int        sNumArgFiles;
 static Boolean    sMusicLog;
+void MacWads_PrepareMusic(long progFrom, long progTo);
 
 /* ------------------------------------------------------------------------ */
 
@@ -323,6 +324,7 @@ static void Reload(void)
     P_Init();
     HU_Init();
     ST_Init();
+    MacWads_PrepareMusic(60, 79);       /* all the new WADs' music, now */
     StatusDialog(80, 80);
 
     CloseStatusDialog();                /* take the progress bar down */
@@ -428,6 +430,22 @@ static Boolean TryMusic(const char *folder, const char *track, FSSpec *out)
         c2pstr(path);
         if (FSMakeFSSpec(gAppVRefNum, gAppDirId, (unsigned char *)path, out) != noErr)
             continue;
+        if (e == 0)
+        {   /* an empty movie is what an interrupted conversion leaves */
+            short ref;
+            long  eof = 0;
+
+            if (FSpOpenDF(out, fsRdPerm, &ref) == noErr)
+            {
+                GetEOF(ref, &eof);
+                FSClose(ref);
+            }
+            if (eof == 0)
+            {
+                FSpDelete(out);
+                continue;
+            }
+        }
         /* a .MID copied from a PC has no type; QuickTime imports 'Midi' files */
         if (e == 1 && FSpGetFInfo(out, &fi) == noErr && fi.fdType != 'Midi')
         {
@@ -451,6 +469,7 @@ static Boolean TryMusic(const char *folder, const char *track, FSSpec *out)
 /* ---- Music from the WADs' own lumps ---- */
 
 unsigned char *MUS2MID(const unsigned char *mus, long muslen, long *midlen);
+unsigned char *MIDI_Fit(const unsigned char *mid, long len, long *midlen);
 int  W_LumpFileIndex(int lump);
 
 static void LogMusic(const char *track, const char *what)
@@ -481,6 +500,38 @@ void MacWads_LogMusicErr(const char *track, const char *what, long err)
    next to it (<track>.MID!, which the lookup prefers from then on).
    The MIDI import comes with QuickTime Musical Instruments, which also
    holds the instruments the music is played with. */
+static Boolean WriteMidi(const FSSpec *spec, const void *data, long len);
+
+/* A MIDI file with more events than QuickTime 2.x's import survives (made
+   by an older build, or copied in) is rewritten to fit first. */
+static void FitMidiFile(FSSpec *spec, const char *track)
+{
+    short          ref;
+    long           len = 0, fitlen;
+    unsigned char *data, *fit;
+
+    if (FSpOpenDF(spec, fsRdPerm, &ref) != noErr)
+        return;
+    GetEOF(ref, &len);
+    data = len > 0 ? (unsigned char *) malloc(len) : NULL;
+    if (data && FSRead(ref, &len, data) != noErr)
+    {
+        free(data);
+        data = NULL;
+    }
+    FSClose(ref);
+    if (!data)
+        return;
+    fit = MIDI_Fit(data, len, &fitlen);
+    free(data);
+    if (fit)
+    {
+        LogMusic(track, "MIDI file thinned out for QuickTime");
+        WriteMidi(spec, fit, fitlen);
+        free(fit);
+    }
+}
+
 Boolean MacWads_MidiToMovie(FSSpec *spec, const char *track)
 {
     FInfo  fi;
@@ -489,6 +540,7 @@ Boolean MacWads_MidiToMovie(FSSpec *spec, const char *track)
 
     if (FSpGetFInfo(spec, &fi) != noErr || fi.fdType != 'Midi')
         return true;                        /* a movie already */
+    FitMidiFile(spec, track);
     movie = *spec;
     if (movie.name[0] > 30)
         return false;
@@ -538,6 +590,8 @@ static Boolean WriteMidi(const FSSpec *spec, const void *data, long len)
  * replaced by a better file of the same name).  If that disk can't be
  * written, the Temporary Items folder is used.
  */
+static Boolean sLookupOnly;             /* MacWads_PrepareMusic's first pass */
+
 static Boolean ConvertMusic(int lump, const char *folder, const char *track, FSSpec *out)
 {
     const unsigned char *data;
@@ -549,14 +603,19 @@ static Boolean ConvertMusic(int lump, const char *folder, const char *track, FSS
     short                vref;
     int                  i;
 
+    if (sLookupOnly)
+        return false;
     len = W_LumpLength(lump);
     data = W_CacheLumpNum(lump, PU_STATIC);
     if (len >= 4 && !memcmp(data, "MThd", 4))
-    {   /* some WADs already hold standard MIDI files */
-        mid = (unsigned char *) malloc(len);
-        if (mid)
+    {   /* some WADs already hold standard MIDI files: kept as they are
+           unless QuickTime can't take that many events (mus2mid.c) */
+        mid = MIDI_Fit(data, len, &midlen);
+        if (!mid && (mid = (unsigned char *) malloc(len)) != NULL)
+        {
             memcpy(mid, data, len);
-        midlen = len;
+            midlen = len;
+        }
     }
     else
         mid = MUS2MID(data, len, &midlen);
@@ -665,6 +724,80 @@ Boolean MacWads_FindMusic(const char *track, FSSpec *out)
     }
     LogMusic(track, "not found");
     return false;
+}
+
+/*
+ * Converts every track of the loaded WADs up front (MacWads_Reload and
+ * D_DoomMain, while the loading status window is up), so nothing is
+ * converted during play: MUS lump -> :MIDI:<WAD>:<TRACK>.MID -> .MID!
+ * QuickTime movie.  Tracks that already have a movie are skipped, so after
+ * the first time this only looks the files up.  Needs QuickTime (music on);
+ * S_ChangeMusic still converts on demand otherwise.
+ */
+void StatusDialog(long total, long current);
+void DrawStatusDialog(Boolean forUpdate);
+void StatusParamText(char *one, char *two, char *three, char *four);
+
+static Boolean IsMusicLump(int i, char *track)
+{
+    char name[9];
+    int  k;
+
+    if (lumpinfo[i].name[0] != 'D' || lumpinfo[i].name[1] != '_')
+        return false;
+    memcpy(name, lumpinfo[i].name, 8);
+    name[8] = 0;
+    if (W_CheckNumForName(name) != i)       /* a later WAD replaces it */
+        return false;
+    for (k = 0; name[k + 2]; k++)
+        track[k] = tolower(name[k + 2]);
+    track[k] = 0;
+    return k > 0;
+}
+
+static Boolean HasMovie(const char *track)
+{
+    FSSpec spec;
+    FInfo  fi;
+    Boolean found;
+
+    sLookupOnly = true;
+    found = MacWads_FindMusic(track, &spec);
+    sLookupOnly = false;
+    return found && FSpGetFInfo(&spec, &fi) == noErr && fi.fdType != 'Midi';
+}
+
+void MacWads_PrepareMusic(long progFrom, long progTo)
+{
+    extern Boolean gQuickTimeLoaded;
+    static char   *todo;
+    char           track[9], msg[80];
+    FSSpec         spec;
+    int            i, total = 0, done = 0;
+
+    if (!gQuickTimeLoaded || !numlumps)
+        return;
+    todo = (char *) realloc(todo, numlumps);
+    if (!todo)
+        return;
+    for (i = 0; i < numlumps; i++)
+    {
+        todo[i] = IsMusicLump(i, track) && !HasMovie(track);
+        total += todo[i];
+    }
+    for (i = 0; i < numlumps; i++)
+    {
+        if (!todo[i] || !IsMusicLump(i, track))
+            continue;
+        done++;
+        sprintf(msg, "Generating MIDI files from WAD... (%d of %d)", done, total);
+        c2pstr(msg);
+        StatusParamText(msg, "\p", "\p", "\p");
+        DrawStatusDialog(TRUE);
+        StatusDialog(80, progFrom + (progTo - progFrom) * done / total);
+        if (MacWads_FindMusic(track, &spec))
+            MacWads_MidiToMovie(&spec, track);
+    }
 }
 
 /* ------------------------------------------------------------------------ */

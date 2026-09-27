@@ -1357,7 +1357,9 @@ void D_DoomMain (void)
 	ST_Init ();
 	{
 		extern void MacWads_CheckFeatures (void);
+		extern void MacWads_PrepareMusic (long progFrom, long progTo);
 		MacWads_CheckFeatures ();	// warn about Boom-only levels
+		MacWads_PrepareMusic (72, 79);	// convert the WADs' music now, not in play
 	}
 	StatusDialog(80, 80);
 	
